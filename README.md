@@ -15,7 +15,7 @@ We are the ZetaTech Biometric :rocket:, and this is our team:
 |-------|-------|
 |Louise Clark Publico| Full Stack Developer :computer: |
 |Joshua Camacho| Full Stack Developer :computer:|
-|Alexa Gin Jagape| Front End :pencil2: |
-|Wrencil Caballero| Back End :cd: |
+|Alexa Gin Jagape| Front End Developer :pencil2: |
+|Wrencil Caballero| Back End Developer :cd: |
 
 # How to run the system?
