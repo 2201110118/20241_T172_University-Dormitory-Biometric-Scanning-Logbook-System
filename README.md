@@ -8,10 +8,14 @@ Biometric Scanning Logbook System (BSLS) is a seamless attendance tracker and ma
 
 The goal of this project system is to improve efficiency, integrity, user experience, and security of the students and staff's logbook attendance of the Bukidnon State University Mahogany Dormitory. Using fingerprint scanning for quick and seamless in and out attendance, and managing accounts, recent student activity and more for the admins of the dormitory. The system has a feature if the student are not able to come back at night, they will sent a message or mail alerting close friends and family.
 
-### Group Memebers:
-We are the ZetaTech Biometric :rocket:, developing this system and this is our team:
+### Group Memebers
+We are the ZetaTech Biometric :rocket:, and this is our team:
 
-* Louise Clark Publico
-* Joshua Camacho
-* Alexa Gin Jagape
-* Wrencil Caballero
+| Names | Roles |
+|-------|-------|
+|Louise Clark Publico| Full Stack Developer :computer: |
+|Joshua Camacho| Full Stack Developer :computer:|
+|Alexa Gin Jagape| Front End :pencil2: |
+|Wrencil Caballero| Back End :cd: |
+
+# How to run the system?
