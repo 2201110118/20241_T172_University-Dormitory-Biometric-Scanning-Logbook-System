@@ -1,5 +1,5 @@
 # Introduction
-<div align="center"><img src="https://buksu.edu.ph/wp-content/uploads/2020/05/buksu-logo-min-1024x1024.png" alt="Logo" width="200" height="200"></div>
+<div align="center"><img src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png" alt="Buksu Logo" width="200" height="200"></div>
 
 ## University Dormitory Biometric Scanning Logbook System
 
