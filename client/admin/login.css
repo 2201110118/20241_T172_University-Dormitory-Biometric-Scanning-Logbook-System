@@ -1,0 +1,28 @@
+body {
+    background-image: url("../images/login_background.png");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.center-container {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.padding-size {
+    padding-top: 100px;
+    padding-bottom: 150px;
+    padding-left: 80px;
+    padding-right: 80px;
+}
+
+.input-size {
+    width: 350px;
+}
+
+.button-size {
+    width: 105px;
+}
