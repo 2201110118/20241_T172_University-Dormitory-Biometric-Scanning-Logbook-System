@@ -20,7 +20,7 @@ We are the ZetaTech Biometric :rocket:, and this is our team:
 
 # How to run the system?
 
-### Setting Up MongoDB for Your Server
+### Setting Up MongoDB for your Server for our System.
 Currently, to successfully run our server system with MongoDB, you'll need to configure your connection string. Follow these steps to set up the necessary environment:
 
 1. Open the .env File
@@ -59,4 +59,4 @@ Delete a Student: deleteStudent()
 
 That's it! Your server is now configured to connect to your MongoDB database. :grinning: :thumbsup:
 
-### The how to run the system will change over time.
+__The how to run the system will change over time.__
