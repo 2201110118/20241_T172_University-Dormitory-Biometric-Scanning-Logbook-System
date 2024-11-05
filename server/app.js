@@ -2,6 +2,12 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import cors from 'cors';
+
+const corsOptions = {
+    origin: ["http://localhost:3001"],
+    credentials: true,
+}
 
 // Initialize the Express application
 const app = express();
@@ -14,6 +20,8 @@ const port = process.env.PORT;
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
+
+app.use(cors(corsOptions));
 
 // Import route modules for handling student and admin routes
 import studentRoute from './routes/studentRoute.js';
