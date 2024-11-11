@@ -1,12 +1,54 @@
-// Import mongoose and necessary components
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
-// Define the schema for the Student model
 const studentSchema = new Schema({
     gmail: {
         type: String,
         required: true
+    },
+    studentid: {
+        type: Number,
+        required: true
+    },
+    fullname: [{
+        firstname: {
+            type: String,
+            required: true
+        },
+        lastname: {
+            type: String,
+            required: true
+        }
+    }],
+    contactnumber: [{
+        familycontactnumber: {
+            type: Number,
+            required: false
+        },
+        familycontactgmail: {
+            type: String,
+            required: false
+        },
+        guardiancontactnumber: {
+            type: Number,
+            required: false
+        },
+        guardiancontactgmail: {
+            type: String,
+            required: false
+        },
+        friendcontactnumber: {
+            type: Number,
+            required: false
+        },
+        friendcontactgmail: {
+            type: String,
+            required: false
+        },
+    }],
+    roomnumber: {
+        type: Number,
+        required: true,
     },
     password: {
         type: String,
@@ -15,8 +57,8 @@ const studentSchema = new Schema({
     }
 });
 
-// Create the Student model from the schema
+studentSchema.index({ studentid: 1 }, { unique: true });
+
 const studentModel = mongoose.model('Student', studentSchema);
 
-// Export the Student model for use in other parts of the application
 export default studentModel;
