@@ -28,8 +28,10 @@ import studentRoute from './routes/studentRoute.js';
 import adminRoute from './routes/adminRoute.js';
 
 // Define API routes
-app.use('/api/admin', adminRoute);   // Admin API routes
-app.use('/api/student', studentRoute); // Student API routes
+// Admin API routes
+app.use('/api/admin', adminRoute);
+// Student API routes  
+app.use('/api/student', studentRoute);
 
 // Connect to the MongoDB database using the URI from environment variables
 mongoose.connect(process.env.MONGO_URI)
