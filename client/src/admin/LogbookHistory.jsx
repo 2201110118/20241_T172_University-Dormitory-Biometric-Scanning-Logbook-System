@@ -11,7 +11,8 @@ function AdminLogbookHistory() {
             const response = await fetch('http://localhost:5000/api/log/');
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
-            setLogs(data);
+            const sortedData = data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            setLogs(sortedData);
         } catch (error) {
             console.error(`Error fetching logs: ${error}`);
         }
@@ -113,6 +114,7 @@ function AdminLogbookHistory() {
                 </nav>
                 <main className="col ms-sm-auto px-4">
                     <h2 className="mt-4 mb-3">Logbook History</h2>
+                    <div className="border-3 border-bottom border-black mb-4"></div>
                     <div className="row">
                         <div className="col mb-3">
                             <input className="form-control" type="text" placeholder="Full Name" />
