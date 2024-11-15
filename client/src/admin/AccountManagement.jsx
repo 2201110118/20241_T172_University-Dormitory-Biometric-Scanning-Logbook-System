@@ -122,7 +122,9 @@ function AdminAccountManagement() {
                 </nav>
 
                 <main className="col ms-sm-auto px-4">
-                    <h2 className="my-4">Registered Student Accounts</h2>
+                    <h2 className="my-4">Account Management</h2>
+                    <div className="border-3 border-bottom border-black mb-4"></div>
+                    <h3 className="my-4 fw-normal">Registered Student Accounts</h3>
                     <div className="row">
                         <div className="col">
                             <input className="form-control" type="text" placeholder="First Name" />
@@ -180,7 +182,7 @@ function AdminAccountManagement() {
                         )}
                     </div>
                     <div className="border-bottom border-3 border-black mt-3" />
-                    <h3 className="my-4">Unregistered Student Accounts</h3>
+                    <h3 className="my-4 fw-normal">Unregistered Student Accounts</h3>
                     <div className="row">
                         <div className="col">
                             <input className="form-control" type="text" placeholder="First Name" />
