@@ -1,8 +1,8 @@
-import Student from '../models/student.js'
+import Students from '../models/student.js';
 
 const getStudents = async (req, res) => {
   try {
-    const students = await Student.find();
+    const students = await Students.find();
     res.status(200).json(students);
   } catch (error) {
     console.error('Error fetching students:', error);
@@ -12,7 +12,7 @@ const getStudents = async (req, res) => {
 
 const getStudent = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await Students.findById(req.params.id); // Fixed model name
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -25,7 +25,7 @@ const getStudent = async (req, res) => {
 
 const postStudent = async (req, res) => {
   try {
-    const student = new Student(req.body);
+    const student = new Students(req.body); // Fixed model name
     const savedStudent = await student.save();
     res.status(201).json(savedStudent);
   } catch (error) {
@@ -44,15 +44,10 @@ const updateStudent = async (req, res) => {
       return res.status(400).json({ message: "No valid fields to update." });
     }
 
-    const updatedStudent = await Student.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true
-    });
-
+    const updatedStudent = await Students.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }); // Fixed model name
     if (!updatedStudent) {
       return res.status(404).json({ message: "Student not found" });
     }
-
     res.status(200).json(updatedStudent);
   } catch (error) {
     console.error('Error updating student:', error);
@@ -65,12 +60,10 @@ const deleteStudent = async (req, res) => {
     const studentid = req.params.studentid;
     console.log('Deleting student with studentid:', studentid);
 
-    const student = await Student.findOneAndDelete({ studentid: studentid });
-
+    const student = await Students.findOneAndDelete({ studentid: studentid }); // Fixed model name
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
-
     res.status(200).json({ message: 'Student has been deleted' });
   } catch (error) {
     console.error('Error deleting student:', error);

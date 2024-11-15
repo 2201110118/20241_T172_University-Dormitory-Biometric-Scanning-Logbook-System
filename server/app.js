@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 
 const corsOptions = {
-    origin: ["http://localhost:3001"],
+    origin: ["http://localhost:5001"],
     credentials: true,
 }
 
@@ -26,12 +26,18 @@ app.use(cors(corsOptions));
 // Import route modules for handling student and admin routes
 import studentRoute from './routes/studentRoute.js';
 import adminRoute from './routes/adminRoute.js';
+import messageRoute from './routes/messageRoute.js';
+import logRoute from './routes/logRoute.js';
 
 // Define API routes
 // Admin API routes
 app.use('/api/admin', adminRoute);
 // Student API routes  
 app.use('/api/student', studentRoute);
+
+app.use('/api/message', messageRoute);
+
+app.use('/api/log', logRoute);
 
 // Connect to the MongoDB database using the URI from environment variables
 mongoose.connect(process.env.MONGO_URI)
