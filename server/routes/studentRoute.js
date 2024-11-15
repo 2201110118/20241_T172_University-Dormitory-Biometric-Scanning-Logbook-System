@@ -11,6 +11,6 @@ router.post('/', postStudent);
 
 router.patch('/:id', updateStudent);
 
-router.delete('/student/:studentid', deleteStudent);
+router.delete('/:studentid', deleteStudent);
 
 export default router;
