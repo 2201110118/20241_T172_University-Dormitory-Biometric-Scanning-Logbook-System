@@ -7,16 +7,17 @@ import AdminAccountManagement from './admin/AccountManagement';
 import AdminMessageRequest from './admin/MessageRequest';
 import AdminLogbookHistory from './admin/LogbookHistory';
 import AdminDashboard from './admin/Dashboard';
+import AdminLogin from './admin/Login';
 
 const App = () => {
   return (
     <Router>
       <Routes>
         <Route path="/AdminLogbookHistory" element={<AdminLogbookHistory />} />
-        <Route path="/" element={<AdminAccountManagement />} />
         <Route path="/AdminAccountManagement" element={<AdminAccountManagement />} />
         <Route path="/AdminMessageRequest" element={<AdminMessageRequest />} />
         <Route path="/AdminDashboard" element={<AdminDashboard />} />
+        <Route path="/" element={<AdminLogin />} />
       </Routes>
     </Router>
   );

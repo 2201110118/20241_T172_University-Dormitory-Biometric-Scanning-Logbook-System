@@ -39,5 +39,24 @@ const deleteMessage = async (req, res) => {
     }
 };
 
+const updateMessage = async (req, res) => {
+    try {
+        const messageid = req.params.id;
+        const message = await Messages.findOneAndUpdate(
+            { messageid: messageid },
+            { confirmedRequest: req.body.confirmedRequest },
+            { new: true }
+        );
 
-export { getMessages, getMessage, deleteMessage };
+        if (!message) {
+            return res.status(404).json({ message: "Message not found" });
+        }
+
+        res.status(200).json(message);
+    } catch (error) {
+        console.error('Error updating message:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export { getMessages, getMessage, deleteMessage, updateMessage };

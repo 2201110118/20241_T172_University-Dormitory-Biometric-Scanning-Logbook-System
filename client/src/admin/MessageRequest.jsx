@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import DataTable from 'react-data-table-component';
 
 function AdminMessageRequest() {
     const [messages, setMessages] = useState([]);
     const [selectedDate, setSelectedDate] = useState("");
     const [selectedTime, setSelectedTime] = useState('');
+    const [filterText, setFilterText] = useState('');
+    const [filterTextNo, setFilterTextNo] = useState('');
+    const [resetPaginationToggle, setResetPaginationToggle] = useState(false);
+    const [studentIdFilter, setStudentIdFilter] = useState('');
+    const [studentIdFilterNo, setStudentIdFilterNo] = useState('');
+    const [firstNameFilter, setFirstNameFilter] = useState('');
+    const [lastNameFilter, setLastNameFilter] = useState('');
+    const [firstNameFilterNo, setFirstNameFilterNo] = useState('');
+    const [lastNameFilterNo, setLastNameFilterNo] = useState('');
 
     const fetchMessages = async () => {
         try {
@@ -46,12 +56,209 @@ function AdminMessageRequest() {
         }
     };
 
+    const handleAccept = async (messageid) => {
+        const isConfirmed = window.confirm("Are you sure you want to confirm this request?");
+        if (!isConfirmed) return;
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/message/${messageid}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ confirmedRequest: true })
+            });
+
+            if (!response.ok) throw new Error('Failed to update message status');
+
+            fetchMessages();
+        } catch (error) {
+            console.error('Error updating message status:', error);
+        }
+    };
+
+    const columns = [
+        {
+            name: 'Message ID',
+            selector: row => row.messageid,
+            sortable: true,
+        },
+        {
+            name: 'Student ID',
+            selector: row => row.studentid,
+            sortable: true,
+        },
+        {
+            name: 'Full Name',
+            selector: row => `${row.fullname[0]?.firstname} ${row.fullname[0]?.lastname}`,
+            sortable: true,
+        },
+        {
+            name: 'Room Number',
+            selector: row => row.roomnumber || 'N/A',
+            sortable: true,
+        },
+        {
+            name: 'Date',
+            selector: row => row.date,
+            sortable: true,
+        },
+        {
+            name: 'Status',
+            selector: row => row.confirmedRequest ? "Yes" : "No",
+            sortable: true,
+        },
+        {
+            name: 'Actions',
+            cell: row => (
+                <div>
+                    {!row.confirmedRequest && (
+                        <button
+                            className="btn btn-success btn-sm me-1"
+                            onClick={() => handleAccept(row.messageid)}
+                        >
+                            <i className="bi bi-check-square-fill" style={{ fontSize: "0.875rem" }} />
+                        </button>
+                    )}
+                    <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(row.messageid)}
+                    >
+                        <i className="bi bi-trash2-fill" style={{ fontSize: "0.875rem" }} />
+                    </button>
+                </div>
+            ),
+        },
+    ];
+
+    const customStyles = {
+        rows: {
+            style: {
+                minHeight: '45px',
+                padding: '2px 0px',
+            },
+        },
+        headCells: {
+            style: {
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                backgroundColor: '#f8f9fa',
+                fontWeight: 'bold',
+                minHeight: '45px',
+            },
+        },
+        cells: {
+            style: {
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                paddingTop: '2px',
+                paddingBottom: '2px',
+            },
+        },
+        subHeader: {
+            style: {
+                padding: '0px',
+                marginBottom: '8px',
+            },
+        },
+    };
+
+    const filteredConfirmedYes = confirmedYesMessages.filter(
+        item => {
+            return (
+                (studentIdFilter === '' || item.studentid?.toString().toLowerCase().includes(studentIdFilter.toLowerCase())) &&
+                (firstNameFilter === '' || item.fullname[0]?.firstname.toLowerCase().includes(firstNameFilter.toLowerCase())) &&
+                (lastNameFilter === '' || item.fullname[0]?.lastname.toLowerCase().includes(lastNameFilter.toLowerCase())) &&
+                (selectedDate === '' || item.date?.includes(selectedDate))
+            );
+        }
+    );
+
+    const filteredConfirmedNo = confirmedNoMessages.filter(
+        item => {
+            return (
+                (studentIdFilterNo === '' || item.studentid?.toString().toLowerCase().includes(studentIdFilterNo.toLowerCase())) &&
+                (firstNameFilterNo === '' || item.fullname[0]?.firstname.toLowerCase().includes(firstNameFilterNo.toLowerCase())) &&
+                (lastNameFilterNo === '' || item.fullname[0]?.lastname.toLowerCase().includes(lastNameFilterNo.toLowerCase())) &&
+                (selectedDate === '' || item.date?.includes(selectedDate))
+            );
+        }
+    );
+
+    const createSubHeaderComponent = (
+        idFilter,
+        setIdFilter,
+        firstNameFilter,
+        setFirstNameFilter,
+        lastNameFilter,
+        setLastNameFilter
+    ) => (
+        <div className="container-fluid px-0">
+            <div className="row g-3">
+                <div className="col-md-2">
+                    <input
+                        className="form-control"
+                        type="text"
+                        placeholder="Student ID"
+                        value={idFilter}
+                        onChange={e => setIdFilter(e.target.value)}
+                    />
+                </div>
+                <div className="col-md-2">
+                    <input
+                        className="form-control"
+                        type="text"
+                        placeholder="First Name"
+                        value={firstNameFilter}
+                        onChange={e => setFirstNameFilter(e.target.value)}
+                    />
+                </div>
+                <div className="col-md-2">
+                    <input
+                        className="form-control"
+                        type="text"
+                        placeholder="Last Name"
+                        value={lastNameFilter}
+                        onChange={e => setLastNameFilter(e.target.value)}
+                    />
+                </div>
+                <div className="col-md-2">
+                    <input
+                        className="form-control"
+                        type="date"
+                        placeholder="Date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                    />
+                </div>
+                <div className="col-md-2">
+                    <input
+                        className="form-control"
+                        type="time"
+                        placeholder="Time"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.target.value)}
+                    />
+                </div>
+                <div className="col">
+                    <button
+                        className="btn btn-danger w-100"
+                        type="button"
+                        onClick={() => setResetPaginationToggle(!resetPaginationToggle)}
+                    >
+                        <i className="bi bi-trash2-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <>
             <div>
                 <header className="navbar border-dark border-bottom shadow container-fluid sticky-top bg-white">
                     <div className="container-fluid">
-                        <Link href="">
+                        <Link href="#">
                             <img
                                 src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png"
                                 alt="Buksu Logo"
@@ -85,7 +292,7 @@ function AdminMessageRequest() {
                 </header>
 
                 <div className="container-fluid d-flex row">
-                    <nav className="sidebar bg-dark" style={{ width: "250px", height: "100vh", position: "sticky", top: 0 }}>
+                    <nav className="sidebar bg-dark fixed-top" style={{ width: "250px", height: "100vh", marginTop: "64px" }}>
                         <ul className="flex-column text-white text-decoration-none navbar-nav">
                             <li className="nav-item border-bottom bordor-white">
                                 <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
@@ -126,151 +333,55 @@ function AdminMessageRequest() {
                         </ul>
                     </nav>
 
-                    <main className="container-fluid px-4" style={{ flex: 1 }}>
+                    <main className="container-fluid px-4" style={{ flex: 1, marginLeft: "275px" }}>
                         <h2 className="my-4">Message Request</h2>
                         <div className="border-3 border-bottom border-black mb-4"></div>
+
                         <h3 className="my-4 fw-normal">Confirmed Student Message Requests</h3>
-                        <div className="row">
-                            <div className="col mb-3">
-                                <input className="form-control" type="text" placeholder="Full Name" />
-                            </div>
-                            <div className="col mb-3">
-                                <input className="form-control" type="text" placeholder="Student ID" />
-                            </div>
-                            <div className="col mb-3">
-                                <input
-                                    className="form-control"
-                                    type="date"
-                                    placeholder="Date"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="col mb-3">
-                                <input
-                                    className="form-control"
-                                    type="time"
-                                    placeholder="Time"
-                                    value={selectedTime}
-                                    onChange={(e) => setSelectedTime(e.target.value)}
-                                />
-                            </div>
-                            <button className="btn btn-primary col-sm-1 mb-3" type="button">
-                                <i className="bi bi-search"></i>
-                            </button>
-                        </div>
-                        <div className="table-responsive">
-                            {confirmedYesMessages.length === 0 ? (
-                                <p>No confirmed 'Yes' messages found</p>
-                            ) : (
-                                <table className="table table-striped table-bordered">
-                                    <thead className="text-center border-dark">
-                                        <tr>
-                                            <th>Message ID</th>
-                                            <th>Student ID</th>
-                                            <th>Full Name</th>
-                                            <th>Room Number</th>
-                                            <th>Date</th>
-                                            <th>Confirmed Request</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="align-middle">
-                                        {confirmedYesMessages.map((message) => (
-                                            <tr key={message._id}>
-                                                <td>{message.messageid}</td>
-                                                <td>{message.studentid}</td>
-                                                <td>{`${message.fullname[0]?.firstname} ${message.fullname[0]?.lastname}`}</td>
-                                                <td>{message.roomnumber || "N/A"}</td>
-                                                <td>{message.date}</td>
-                                                <td>{message.confirmedRequest ? "Yes" : "No"}</td>
-                                                <td className="text-center">
-                                                    <button className="btn btn-success me-2">
-                                                        <i className="bi bi-check-square-fill" style={{ fontSize: "1rem" }} />
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-danger me-2"
-                                                        onClick={() => handleDelete(message.messageid)}
-                                                    >
-                                                        <i className="bi bi-x-square-fill" style={{ fontSize: "1rem" }} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        <DataTable
+                            className="border"
+                            columns={columns}
+                            data={filteredConfirmedYes}
+                            pagination
+                            paginationResetDefaultPage={resetPaginationToggle}
+                            subHeader
+                            subHeaderComponent={createSubHeaderComponent(
+                                studentIdFilter,
+                                setStudentIdFilter,
+                                firstNameFilter,
+                                setFirstNameFilter,
+                                lastNameFilter,
+                                setLastNameFilter
                             )}
-                        </div>
+                            persistTableHead
+                            customStyles={customStyles}
+                            striped
+                            highlightOnHover
+                        />
+
                         <div className="border-3 border-bottom border-black mt-3"></div>
+
                         <h3 className="my-4 fw-normal">Student Night Pass Requests</h3>
-                        <div className="row">
-                            <div className="col mb-3">
-                                <input className="form-control" type="text" placeholder="Full Name" />
-                            </div>
-                            <div className="col mb-3">
-                                <input className="form-control" type="text" placeholder="Student ID" />
-                            </div>
-                            <div className="col mb-3">
-                                <input
-                                    className="form-control"
-                                    type="date"
-                                    placeholder="Date"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="col mb-3">
-                                <input
-                                    className="form-control"
-                                    type="time"
-                                    placeholder="Time"
-                                    value={selectedTime}
-                                    onChange={(e) => setSelectedTime(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="table-responsive">
-                            {confirmedNoMessages.length === 0 ? (
-                                <p>No confirmed 'No' messages found</p>
-                            ) : (
-                                <table className="table table-striped table-bordered">
-                                    <thead className="text-center border-dark">
-                                        <tr>
-                                            <th>Message ID</th>
-                                            <th>Student ID</th>
-                                            <th>Full Name</th>
-                                            <th>Room Number</th>
-                                            <th>Date</th>
-                                            <th>Confirmed Request</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="align-middle">
-                                        {confirmedNoMessages.map((message) => (
-                                            <tr key={message._id}>
-                                                <td>{message.messageid}</td>
-                                                <td>{message.studentid}</td>
-                                                <td>{`${message.fullname[0]?.firstname} ${message.fullname[0]?.lastname}`}</td>
-                                                <td>{message.roomnumber || "N/A"}</td>
-                                                <td>{message.date}</td>
-                                                <td>{message.confirmedRequest ? "Yes" : "No"}</td>
-                                                <td className="text-center">
-                                                    <button className="btn btn-success me-2">
-                                                        <i className="bi bi-check-square-fill" style={{ fontSize: "1rem" }} />
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-danger me-2"
-                                                        onClick={() => handleDelete(message.messageid)}
-                                                    >
-                                                        <i className="bi bi-x-square-fill" style={{ fontSize: "1rem" }} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        <DataTable
+                            className="border mb-5"
+                            columns={columns}
+                            data={filteredConfirmedNo}
+                            pagination
+                            paginationResetDefaultPage={resetPaginationToggle}
+                            subHeader
+                            subHeaderComponent={createSubHeaderComponent(
+                                studentIdFilterNo,
+                                setStudentIdFilterNo,
+                                firstNameFilterNo,
+                                setFirstNameFilterNo,
+                                lastNameFilterNo,
+                                setLastNameFilterNo
                             )}
-                        </div>
+                            persistTableHead
+                            customStyles={customStyles}
+                            striped
+                            highlightOnHover
+                        />
                     </main>
                 </div>
             </div>
