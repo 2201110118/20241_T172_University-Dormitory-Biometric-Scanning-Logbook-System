@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from 'react-router-dom';
+import DataTable from 'react-data-table-component';
 
 function AdminDashboard() {
     const [logs, setLogs] = useState([]);
@@ -55,6 +56,130 @@ function AdminDashboard() {
         fetchMessages();
     }, []);
 
+    // Define columns for each table
+    const logColumns = [
+        {
+            name: 'Log ID',
+            selector: row => row.logid,
+            sortable: true,
+        },
+        {
+            name: 'Full Name',
+            selector: row => `${row.fullname[0].firstname} ${row.fullname[0].lastname}`,
+            sortable: true,
+        },
+        {
+            name: 'Student ID',
+            selector: row => row.studentid,
+            sortable: true,
+        },
+        {
+            name: 'Room Number',
+            selector: row => row.roomnumber,
+            sortable: true,
+        },
+        {
+            name: 'Date',
+            selector: row => row.date,
+            sortable: true,
+        },
+    ];
+
+    const messageColumns = [
+        {
+            name: 'Message ID',
+            selector: row => row.messageid,
+            sortable: true,
+        },
+        {
+            name: 'Student ID',
+            selector: row => row.studentid,
+            sortable: true,
+        },
+        {
+            name: 'Full Name',
+            selector: row => `${row.fullname[0].firstname} ${row.fullname[0].lastname}`,
+            sortable: true,
+        },
+        {
+            name: 'Room Number',
+            selector: row => row.roomnumber || "N/A",
+            sortable: true,
+        },
+        {
+            name: 'Date',
+            selector: row => row.date,
+            sortable: true,
+        },
+        {
+            name: 'Status',
+            selector: row => row.confirmedRequest ? "Yes" : "No",
+            sortable: true,
+        },
+    ];
+
+    const registeredStudentColumns = [
+        {
+            name: 'ID',
+            selector: row => row.studentid,
+            sortable: true,
+        },
+        {
+            name: 'Full Name',
+            selector: row => `${row.fullname[0].firstname} ${row.fullname[0].lastname}`,
+            sortable: true,
+        },
+        {
+            name: 'Gmail Account',
+            selector: row => row.gmail,
+            sortable: true,
+        },
+        {
+            name: 'Room Number',
+            selector: row => row.roomnumber,
+            sortable: true,
+        },
+    ];
+
+    const customStyles = {
+        table: {
+            style: {
+                backgroundColor: 'white',
+            },
+        },
+        rows: {
+            style: {
+                minHeight: '45px',
+                padding: '2px 0px',
+            },
+        },
+        headCells: {
+            style: {
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                backgroundColor: '#f8f9fa',
+                fontWeight: 'bold',
+                minHeight: '45px',
+                fontSize: '0.9rem',
+            },
+        },
+        cells: {
+            style: {
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                paddingTop: '2px',
+                paddingBottom: '2px',
+                fontSize: '0.875rem',
+            },
+        },
+        subHeader: {
+            style: {
+                padding: '0px',
+                marginBottom: '8px',
+            },
+        },
+    };
+
     return (
         <>
             <header className="navbar border-dark border-bottom shadow container-fluid sticky-top bg-white">
@@ -93,7 +218,7 @@ function AdminDashboard() {
             </header>
 
             <div className="container-fluid d-flex row">
-                <nav className="sidebar bg-dark" style={{ width: "250px", height: "100vh", position: "sticky", top: 0 }}>
+                <nav className="sidebar bg-dark fixed-top" style={{ width: "250px", height: "100vh", marginTop: "64px" }}>
                     <ul className="flex-column text-white text-decoration-none navbar-nav">
                         <li className="nav-item border-bottom border-white">
                             <Link to="#" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
@@ -133,137 +258,73 @@ function AdminDashboard() {
                         </li>
                     </ul>
                 </nav>
-                <main className="container-fluid px-4" style={{ flex: 1 }}>
+
+                <main className="container-fluid px-4" style={{ flex: 1, marginLeft: "275px" }}>
                     <div className="col">
                         <h2 className="my-4">Dashboard</h2>
                         <div className="border-3 border-bottom border-black mt-2"></div>
+
                         <h4 className="mt-3 mb-2 fw-normal">Recent Logs</h4>
-                        <div className="table-responsive">
-                            {logs.length === 0 ? (
-                                <p>No logs found</p>
-                            ) : (
-                                <table className="table table-striped table-bordered">
-                                    <thead className="text-center border-dark">
-                                        <tr>
-                                            <th scope="col">Log ID</th>
-                                            <th scope="col">Full Name</th>
-                                            <th scope="col">Student ID</th>
-                                            <th scope="col">Room Number</th>
-                                            <th scope="col">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {logs.slice(0, 5).map((log) => (
-                                            <tr key={log.logid}>
-                                                <td>{log.logid}</td>
-                                                <td>{log.fullname}</td>
-                                                <td>{log.studentid}</td>
-                                                <td>{log.roomnumber}</td>
-                                                <td>{new Date(log.date).toLocaleString()}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
+                        <DataTable
+                            className="mb-5 border"
+                            columns={logColumns}
+                            data={logs.slice(0, 5)}
+                            customStyles={customStyles}
+                            pagination={false}
+                            responsive
+                            striped
+                            highlightOnHover
+                            noDataComponent="No logs found"
+                            dense
+                        />
+
                         <div className="border-3 border-bottom border-black mt-2"></div>
-                        <div className="col">
-                            <h4 className="mb-2 mt-3 fw-normal">Recent Night Pass Request</h4>
-                            <div className="table-responsive">
-                                {messages.filter((message) => !message.confirmedRequest).slice(0, 3).length === 0 ? (
-                                    <p>No unconfirmed message requests found</p>
-                                ) : (
-                                    <table className="table table-striped table-bordered">
-                                        <thead className="text-center border-dark">
-                                            <tr>
-                                                <th>Message ID</th>
-                                                <th>Student ID</th>
-                                                <th>Full Name</th>
-                                                <th>Room Number</th>
-                                                <th>Date</th>
-                                                <th>Confirmed Request</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="align-middle">
-                                            {messages
-                                                .filter((message) => !message.confirmedRequest)
-                                                .slice(0, 5)
-                                                .map((message) => (
-                                                    <tr key={message._id}>
-                                                        <td>{message.messageid}</td>
-                                                        <td>{message.studentid}</td>
-                                                        <td>{`${message.fullname[0]?.firstname} ${message.fullname[0]?.lastname}`}</td>
-                                                        <td>{message.roomnumber || "N/A"}</td>
-                                                        <td>{message.date}</td>
-                                                        <td>{message.confirmedRequest ? "Yes" : "No"}</td>
-                                                    </tr>
-                                                ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
+                        <h4 className="mb-2 mt-3 fw-normal">Recent Night Pass Request</h4>
+                        <DataTable
+                            className="mb-5 border"
+                            columns={messageColumns}
+                            data={messages.filter(message => !message.confirmedRequest).slice(0, 3)}
+                            customStyles={customStyles}
+                            pagination={false}
+                            responsive
+                            striped
+                            highlightOnHover
+                            noDataComponent="No unconfirmed message requests found"
+                            dense
+                        />
+
                         <div className="border-3 border-bottom border-black mt-2"></div>
                         <h4 className="fw-normal mb-2 mt-3">Recent Registered Student</h4>
-                        <div className="col">
-                            <div className="table-responsive">
-                                {registeredStudents.length === 0 ? (
-                                    <p>No registered students found</p>
-                                ) : (
-                                    <table className="table table-striped table-bordered">
-                                        <thead className="text-center border-dark">
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Full Name</th>
-                                                <th>Gmail Account</th>
-                                                <th>Room Number</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="align-middle">
-                                            {registeredStudents.slice(0, 3).map((student) => (
-                                                <tr key={student.studentid}>
-                                                    <td>{student.studentid}</td>
-                                                    <td>{`${student.fullname[0]?.firstname} ${student.fullname[0]?.lastname}`}</td>
-                                                    <td>{student.gmail}</td>
-                                                    <td>{student.roomnumber}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
+                        <DataTable
+                            className="mb-5 border"
+                            columns={registeredStudentColumns}
+                            data={registeredStudents.slice(0, 3)}
+                            customStyles={customStyles}
+                            pagination={false}
+                            responsive
+                            striped
+                            highlightOnHover
+                            noDataComponent="No registered students found"
+                            dense
+                        />
+
                         <div className="border-3 border-bottom border-black mt-2"></div>
-                        <div className="col">
-                            <h4 className="mt-3 mb-2 fw-normal">Recent Registration Request</h4>
-                            <div className="table-responsive">
-                                {unregisteredStudents.length === 0 ? (
-                                    <p>No Registration Request found</p>
-                                ) : (
-                                    <table className="table table-striped table-bordered">
-                                        <thead className="text-center border-dark">
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Full Name</th>
-                                                <th>Gmail Account</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="align-middle">
-                                            {unregisteredStudents.slice(0, 3).map((student) => (
-                                                <tr key={student.studentid}>
-                                                    <td>{student.studentid}</td>
-                                                    <td>{`${student.fullname[0]?.firstname} ${student.fullname[0]?.lastname}`}</td>
-                                                    <td>{student.gmail}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
+                        <h4 className="mt-3 mb-2 fw-normal">Recent Registration Request</h4>
+                        <DataTable
+                            className="mb-5 border"
+                            columns={registeredStudentColumns}
+                            data={unregisteredStudents.slice(0, 3)}
+                            customStyles={customStyles}
+                            pagination={false}
+                            responsive
+                            striped
+                            highlightOnHover
+                            noDataComponent="No Registration Request found"
+                            dense
+                        />
                     </div>
                 </main>
-            </div>
+            </div >
         </>
     );
 }

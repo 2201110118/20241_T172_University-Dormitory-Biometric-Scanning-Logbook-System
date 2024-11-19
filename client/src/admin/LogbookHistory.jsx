@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link } from 'react-router-dom';
+import DataTable from 'react-data-table-component';
 
 function AdminLogbookHistory() {
     const [logs, setLogs] = useState([]);
+    const [filterFirstName, setFilterFirstName] = useState('');
+    const [filterLastName, setFilterLastName] = useState('');
+    const [filterStudentId, setFilterStudentId] = useState('');
     const [selectedDate, setSelectedDate] = useState("");
     const [selectedTime, setSelectedTime] = useState('');
 
@@ -32,6 +36,79 @@ function AdminLogbookHistory() {
         } catch (error) {
             console.error('Error deleting log:', error);
         }
+    };
+
+    const columns = [
+        {
+            name: 'Log ID',
+            selector: row => row.logid,
+            sortable: true,
+        },
+        {
+            name: 'Full Name',
+            selector: row => `${row.fullname[0].firstname} ${row.fullname[0].lastname}`,
+            sortable: true,
+        },
+        {
+            name: 'Student ID',
+            selector: row => row.studentid,
+            sortable: true,
+        },
+        {
+            name: 'Room Number',
+            selector: row => row.roomnumber,
+            sortable: true,
+        },
+        {
+            name: 'Date',
+            selector: row => row.date,
+            sortable: true,
+        }
+    ];
+
+    const filteredData = logs.filter(item => {
+        const fullName = `${item.fullname[0].firstname} ${item.fullname[0].lastname}`.toLowerCase();
+        const matchesName =
+            (filterFirstName === '' || item.fullname[0].firstname.toLowerCase().includes(filterFirstName.toLowerCase())) &&
+            (filterLastName === '' || item.fullname[0].lastname.toLowerCase().includes(filterLastName.toLowerCase()));
+        const matchesStudentId = !filterStudentId || item.studentid?.toString().includes(filterStudentId);
+        const matchesDate = !selectedDate || item.date.includes(selectedDate);
+        const matchesTime = !selectedTime || item.date.includes(selectedTime);
+
+        return matchesName && matchesStudentId && matchesDate && matchesTime;
+    });
+
+    const customStyles = {
+        rows: {
+            style: {
+                minHeight: '45px',
+                padding: '2px 0px',
+            },
+        },
+        headCells: {
+            style: {
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                backgroundColor: '#f8f9fa',
+                fontWeight: 'bold',
+                minHeight: '45px',
+                borderTop: '1px solid #dee2e6',
+            },
+        },
+        cells: {
+            style: {
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                paddingTop: '2px',
+                paddingBottom: '2px',
+            },
+        },
+        subHeader: {
+            style: {
+                padding: '0px',
+                marginBottom: '8px',
+            },
+        },
     };
 
     return (
@@ -72,7 +149,7 @@ function AdminLogbookHistory() {
             </header>
 
             <div className="container-fluid d-flex row">
-                <nav className="sidebar bg-dark" style={{ width: "250px", height: "100vh", position: "sticky", top: 0 }}>
+                <nav className="sidebar bg-dark fixed-top" style={{ width: "250px", height: "100vh", marginTop: "64px" }}>
                     <ul className="flex-column text-white text-decoration-none navbar-nav">
                         <li className="nav-item border-bottom bordor-white">
                             <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
@@ -112,15 +189,37 @@ function AdminLogbookHistory() {
                         </li>
                     </ul>
                 </nav>
-                <main className="col ms-sm-auto px-4">
+
+                <main className="container-fluid px-4" style={{ flex: 1, marginLeft: "275px" }}>
                     <h2 className="mt-4 mb-3">Logbook History</h2>
                     <div className="border-3 border-bottom border-black mb-4"></div>
                     <div className="row">
                         <div className="col mb-3">
-                            <input className="form-control" type="text" placeholder="Full Name" />
+                            <input
+                                className="form-control"
+                                type="text"
+                                placeholder="First Name"
+                                value={filterFirstName}
+                                onChange={e => setFilterFirstName(e.target.value)}
+                            />
                         </div>
                         <div className="col mb-3">
-                            <input className="form-control" type="text" placeholder="Student ID" />
+                            <input
+                                className="form-control"
+                                type="text"
+                                placeholder="Last Name"
+                                value={filterLastName}
+                                onChange={e => setFilterLastName(e.target.value)}
+                            />
+                        </div>
+                        <div className="col mb-3">
+                            <input
+                                className="form-control"
+                                type="text"
+                                placeholder="Student ID"
+                                value={filterStudentId}
+                                onChange={e => setFilterStudentId(e.target.value)}
+                            />
                         </div>
                         <div className="col mb-3">
                             <input
@@ -140,44 +239,33 @@ function AdminLogbookHistory() {
                                 onChange={(e) => setSelectedTime(e.target.value)}
                             />
                         </div>
-                        <button className="btn btn-primary col-sm-1 mb-3" type="button">
-                            <i className="bi bi-search"></i>
+                        <button
+                            className="btn btn-danger col-sm-1 mb-3 me-3"
+                            type="button"
+                            onClick={() => {
+                                setFilterFirstName('');
+                                setFilterLastName('');
+                                setFilterStudentId('');
+                                setSelectedDate('');
+                                setSelectedTime('');
+                            }}
+                        >
+                            <i className="bi bi-trash2-fill"></i>
                         </button>
                     </div>
-                    <div className="table-responsive">
-                        {logs.length === 0 ? (
-                            <p>No logs found</p>
-                        ) : (
-                            <table className="table table-striped table-bordered">
-                                <thead className="text-center border-dark">
-                                    <tr>
-                                        <th scope="col">Log ID</th>
-                                        <th scope="col">Full Name</th>
-                                        <th scope="col">Student ID</th>
-                                        <th scope="col">Room Number</th>
-                                        <th scope="col">Date</th>
-                                        <th scope="col">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {logs.map((log) => (
-                                        <tr key={log.logid}>
-                                            <td>{log.logid}</td>
-                                            <td>{log.fullname}</td>
-                                            <td>{log.studentid}</td>
-                                            <td>{log.roomnumber}</td>
-                                            <td>{new Date(log.date).toLocaleString()}</td>
-                                            <td className="text-center">
-                                                <button className="btn btn-danger me-2" onClick={() => handleDelete(log.logid)}>
-                                                    <i className="bi bi-trash2-fill text-white" style={{ fontSize: "1rem" }} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
+
+                    <DataTable
+                        className="border"
+                        columns={columns}
+                        data={filteredData}
+                        pagination
+                        responsive
+                        highlightOnHover
+                        striped
+                        noDataComponent="No logs found"
+                        customStyles={customStyles}
+                        dense
+                    />
                 </main>
             </div>
         </div>
