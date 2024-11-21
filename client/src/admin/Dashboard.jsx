@@ -54,13 +54,13 @@ function AdminDashboard() {
         {
             name: 'Log ID',
             selector: row => row.logid,
-            sortable: true,
+            sortable: false,
             width: '100px',
         },
         {
             name: 'Student ID',
             selector: row => row.student?.studentid || 'N/A',
-            sortable: true,
+            sortable: false,
             width: '120px',
         },
         {
@@ -71,25 +71,25 @@ function AdminDashboard() {
                     `${student.fullname.firstname} ${student.fullname.lastname}` :
                     'N/A';
             },
-            sortable: true,
+            sortable: false,
             width: '200px',
         },
         {
             name: 'Room Number',
             selector: row => row.student?.roomnumber || 'N/A',
-            sortable: true,
+            sortable: false,
             width: '120px',
         },
         {
             name: 'Log Type',
             selector: row => row.logType,
-            sortable: true,
+            sortable: false,
             width: '100px',
         },
         {
             name: 'Timestamp',
             selector: row => row.timestamp,
-            sortable: true,
+            sortable: false,
             width: '200px',
         }
     ];
@@ -98,12 +98,12 @@ function AdminDashboard() {
         {
             name: 'Message ID',
             selector: row => row.messageid,
-            sortable: true,
+            sortable: false,
         },
         {
             name: 'Student ID',
             selector: row => row.student?.studentid,
-            sortable: true,
+            sortable: false,
         },
         {
             name: 'Full Name',
@@ -113,22 +113,22 @@ function AdminDashboard() {
                     `${student.fullname.firstname} ${student.fullname.lastname}` :
                     'N/A';
             },
-            sortable: true,
+            sortable: false,
         },
         {
             name: 'Room Number',
             selector: row => row.student?.roomnumber || 'N/A',
-            sortable: true,
+            sortable: false,
         },
         {
             name: 'Request Date',
             selector: row => row.requestStatus.requestDate,
-            sortable: true,
+            sortable: false,
         },
         {
             name: 'Status',
             selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
-            sortable: true,
+            sortable: false,
         },
     ];
 
@@ -137,25 +137,25 @@ function AdminDashboard() {
         {
             name: 'ID',
             selector: row => row.studentid,
-            sortable: true,
+            sortable: false,
             width: '80px',
         },
         {
             name: 'Full Name',
             selector: row => `${row.fullname.firstname} ${row.fullname.lastname}`,
-            sortable: true,
+            sortable: false,
             width: '200px',
         },
         {
             name: 'Gmail Account',
             selector: row => row.gmail,
-            sortable: true,
+            sortable: false,
             width: '250px',
         },
         {
             name: 'Room Number',
             selector: row => row.roomnumber ? row.roomnumber : 'Not assigned',
-            sortable: true,
+            sortable: false,
             width: '120px',
         },
         {
@@ -171,7 +171,7 @@ function AdminDashboard() {
                     minute: '2-digit'
                 });
             },
-            sortable: true,
+            sortable: false,
             width: '200px',
             wrap: true,
             style: {
@@ -185,25 +185,25 @@ function AdminDashboard() {
         {
             name: 'ID',
             selector: row => row.studentid,
-            sortable: true,
+            sortable: false,
             width: '80px',
         },
         {
             name: 'Full Name',
             selector: row => `${row.fullname.firstname} ${row.fullname.lastname}`,
-            sortable: true,
+            sortable: false,
             width: '200px',
         },
         {
             name: 'Gmail Account',
             selector: row => row.gmail,
-            sortable: true,
+            sortable: false,
             width: '250px',
         },
         {
             name: 'Room Number',
             selector: row => row.roomnumber ? row.roomnumber : 'Not assigned',
-            sortable: true,
+            sortable: false,
             width: '120px',
         },
         {
@@ -219,7 +219,7 @@ function AdminDashboard() {
                     minute: '2-digit'
                 });
             },
-            sortable: true,
+            sortable: false,
             width: '200px',
             wrap: true,
             style: {

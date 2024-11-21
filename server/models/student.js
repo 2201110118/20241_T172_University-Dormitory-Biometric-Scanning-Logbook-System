@@ -10,9 +10,9 @@ const formatDate = (date) => {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true,
+        hour12: true
     };
-    return new Intl.DateTimeFormat('en-US', options).format(date);
+    return new Date(date).toLocaleString('en-US', options);
 };
 
 const studentSchema = new mongoose.Schema({
@@ -49,12 +49,17 @@ const studentSchema = new mongoose.Schema({
         },
         submissionDate: {
             type: String,
-            default: () => formatDate(new Date())
+            default: () => formatDate(new Date()),
+            get: (date) => formatDate(date)
         },
         verificationDate: {
-            type: String
+            type: String,
+            get: (date) => formatDate(date)
         }
     }
+}, {
+    toJSON: { getters: true },
+    toObject: { getters: true }
 });
 
 studentSchema.pre('findOneAndDelete', async function (next) {

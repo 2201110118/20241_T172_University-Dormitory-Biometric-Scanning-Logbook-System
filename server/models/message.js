@@ -8,9 +8,9 @@ const formatDate = (date) => {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true,
+        hour12: true
     };
-    return new Intl.DateTimeFormat('en-US', options).format(date);
+    return new Date(date).toLocaleString('en-US', options);
 };
 
 const messageModel = mongoose.model('Messages', new mongoose.Schema({
@@ -34,12 +34,18 @@ const messageModel = mongoose.model('Messages', new mongoose.Schema({
         },
         requestDate: {
             type: String,
-            default: () => formatDate(new Date())
+            default: () => formatDate(new Date()),
+            get: (date) => formatDate(date)
         },
         confirmationDate: {
-            type: String
+            type: String,
+            get: (date) => formatDate(date),
+            set: (date) => formatDate(new Date())
         }
     }
+}, {
+    toJSON: { getters: true },
+    toObject: { getters: true }
 }).index({ messageid: 1 }, { unique: true }));
 
 export default messageModel;
