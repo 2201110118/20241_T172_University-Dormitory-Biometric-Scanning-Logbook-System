@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAdmins, getAdmin, postAdmin, updateAdmin, deleteAdmin } from '../controllers/adminController.js';
+import { getAdmins, getAdmin, postAdmin, updateAdmin, deleteAdmin, loginAdmin, changePassword } from '../controllers/adminController.js';
 
 const router = express.Router();
 
@@ -17,5 +17,8 @@ router.patch('/:id', updateAdmin);
 
 // Delete an admin by ID
 router.delete('/:id', deleteAdmin);
+
+// Change password
+router.put('/change-password/:id', changePassword);
 
 export default router;

@@ -1,4 +1,6 @@
 import Admin from '../models/admin.js'
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 // Get all admins from the database
 const getAdmins = async (req, res) => {
@@ -42,19 +44,30 @@ const getAdmin = async (req, res) => {
 // Add a new admin to the database
 const postAdmin = async (req, res) => {
   try {
-    // Create a new admin instance with the provided data
-    const admin = new Admin(req.body);
+    const { username, password } = req.body;
+
+    // Hash the password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create a new admin instance with the hashed password
+    const admin = new Admin({
+      username,
+      password: hashedPassword
+    });
 
     // Save the new admin record to the database
     const savedAdmin = await admin.save();
 
-    // Respond with the saved admin record
-    res.status(201).json(savedAdmin);
-  } catch (error) {
-    // Log the error for debugging
-    console.error('Error adding admin:', error);
+    // Remove password from response
+    const adminResponse = {
+      _id: savedAdmin._id,
+      username: savedAdmin.username
+    };
 
-    // Return a server error response
+    res.status(201).json(adminResponse);
+  } catch (error) {
+    console.error('Error adding admin:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -118,4 +131,73 @@ const deleteAdmin = async (req, res) => {
   }
 };
 
-export { getAdmins, getAdmin, postAdmin, updateAdmin, deleteAdmin };
+// Add this new function
+const loginAdmin = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find admin by username
+    const admin = await Admin.findOne({ username }).select('+password');
+
+    if (!admin) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // Compare passwords
+    const isMatch = await bcrypt.compare(password, admin.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      { id: admin._id, username: admin.username },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '1d' }
+    );
+
+    // Send success response with token
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      admin: {
+        id: admin._id,
+        username: admin.username
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Update the changePassword controller
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.params.id;
+
+    // Find admin and include the password field
+    const admin = await Admin.findById(adminId).select('+password');
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Verify current password
+    if (admin.password !== currentPassword) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Update password
+    admin.password = newPassword;
+    await admin.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ message: 'Error updating password', error: error.message });
+  }
+};
+
+export { getAdmins, getAdmin, postAdmin, updateAdmin, deleteAdmin, loginAdmin, changePassword };
