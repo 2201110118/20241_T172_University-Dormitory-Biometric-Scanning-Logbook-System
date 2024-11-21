@@ -1,6 +1,4 @@
 import Admin from '../models/admin.js'
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 
 // Get all admins from the database
 const getAdmins = async (req, res) => {
@@ -46,14 +44,10 @@ const postAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Hash the password before saving
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create a new admin instance with the hashed password
+    // Create a new admin instance with plain password
     const admin = new Admin({
       username,
-      password: hashedPassword
+      password // Store password without hashing
     });
 
     // Save the new admin record to the database
@@ -143,24 +137,14 @@ const loginAdmin = async (req, res) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // Compare passwords
-    const isMatch = await bcrypt.compare(password, admin.password);
-
-    if (!isMatch) {
+    // Simple password check
+    if (admin.password !== password) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // Create JWT token
-    const token = jwt.sign(
-      { id: admin._id, username: admin.username },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '1d' }
-    );
-
-    // Send success response with token
+    // Send success response without token
     res.status(200).json({
       message: 'Login successful',
-      token,
       admin: {
         id: admin._id,
         username: admin.username
