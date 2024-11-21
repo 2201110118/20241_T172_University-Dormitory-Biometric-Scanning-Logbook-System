@@ -110,7 +110,6 @@ function AdminSettings() {
                     <ul className="ms-auto navbar-nav flex-row">
                         <li className="nav-item">
                             <Link
-                                to="/"
                                 className="btn btn-outline-dark text-center border-2"
                                 onClick={(e) => {
                                     e.preventDefault();

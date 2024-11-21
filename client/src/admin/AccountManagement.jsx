@@ -20,7 +20,8 @@ function AdminAccountManagement() {
         studentid: '',
         firstname: '',
         lastname: '',
-        gmail: ''
+        gmail: '',
+        submissionDate: ''
     });
 
     const [activeRegisteredFilters, setActiveRegisteredFilters] = useState({
@@ -36,7 +37,8 @@ function AdminAccountManagement() {
         studentid: '',
         firstname: '',
         lastname: '',
-        gmail: ''
+        gmail: '',
+        submissionDate: ''
     });
 
     const [showModal, setShowModal] = useState(false);
@@ -166,11 +168,13 @@ function AdminAccountManagement() {
             const firstname = student.fullname?.firstname?.toLowerCase() || '';
             const lastname = student.fullname?.lastname?.toLowerCase() || '';
             const gmail = student.gmail?.toLowerCase() || '';
+            const submissionDate = student.accountStatus?.submissionDate || '';
 
             return studentid.includes(activeUnregisteredFilters.studentid.toLowerCase()) &&
                 firstname.includes(activeUnregisteredFilters.firstname.toLowerCase()) &&
                 lastname.includes(activeUnregisteredFilters.lastname.toLowerCase()) &&
-                gmail.includes(activeUnregisteredFilters.gmail.toLowerCase());
+                gmail.includes(activeUnregisteredFilters.gmail.toLowerCase()) &&
+                submissionDate.toLowerCase().includes(activeUnregisteredFilters.submissionDate.toLowerCase());
         });
     };
 
@@ -373,19 +377,19 @@ function AdminAccountManagement() {
                         className="btn btn-info btn-sm me-2"
                         onClick={() => handleInfoClick(row)}
                     >
-                        <i className="bi bi-info-circle-fill text-white" />
+                        <i className="bi bi-info-circle-fill text-black" />
                     </button>
                     <button
                         className="btn btn-warning btn-sm me-2"
                         onClick={() => handleEditClick(row)}
                     >
-                        <i className="bi bi-pencil-fill text-white" />
+                        <i className="bi bi-pencil-fill text-black" />
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(row.studentid)}
                     >
-                        <i className="bi bi-trash3-fill" />
+                        <i className="bi bi-trash2-fill" />
                     </button>
                 </div>
             ),
@@ -416,6 +420,11 @@ function AdminAccountManagement() {
             sortable: true,
         },
         {
+            name: 'Submission Date',
+            selector: row => row.accountStatus?.submissionDate || 'N/A',
+            sortable: true,
+        },
+        {
             name: 'Actions',
             cell: row => (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
@@ -423,19 +432,19 @@ function AdminAccountManagement() {
                         className="btn btn-info btn-sm me-2"
                         onClick={() => handleInfoClick(row)}
                     >
-                        <i className="bi bi-info-circle-fill text-white" />
+                        <i className="bi bi-info-circle-fill text-black" />
                     </button>
                     <button
                         className="btn btn-warning btn-sm me-2"
                         onClick={() => handleEditClick(row)}
                     >
-                        <i className="bi bi-pencil-fill text-white" />
+                        <i className="bi bi-pencil-fill text-black" />
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(row.studentid)}
                     >
-                        <i className="bi bi-trash3-fill" />
+                        <i className="bi bi-trash2-fill" />
                     </button>
                 </div>
             ),
@@ -482,7 +491,14 @@ function AdminAccountManagement() {
                     </Link>
                     <ul className="ms-auto navbar-nav flex-row">
                         <li className="nav-item">
-                            <Link className="btn btn-outline-dark text-center border-2">
+                            <Link
+                                className="btn btn-outline-dark text-center border-2"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    localStorage.removeItem('adminLoggedIn');
+                                    window.location.href = '/';
+                                }}
+                            >
                                 Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
                             </Link>
                         </li>
@@ -689,6 +705,16 @@ function AdminAccountManagement() {
                                 onChange={handleUnregisteredInputChange}
                             />
                         </div>
+                        <div className="col">
+                            <input
+                                className="form-control"
+                                type="text"
+                                placeholder="Submission Date"
+                                name="submissionDate"
+                                value={unregisteredInputs.submissionDate}
+                                onChange={handleUnregisteredInputChange}
+                            />
+                        </div>
                         <div className="col-auto">
                             <button
                                 className="btn btn-danger"
@@ -697,13 +723,15 @@ function AdminAccountManagement() {
                                         studentid: '',
                                         firstname: '',
                                         lastname: '',
-                                        gmail: ''
+                                        gmail: '',
+                                        submissionDate: ''
                                     });
                                     setActiveUnregisteredFilters({
                                         studentid: '',
                                         firstname: '',
                                         lastname: '',
-                                        gmail: ''
+                                        gmail: '',
+                                        submissionDate: ''
                                     });
                                 }}
                             >
@@ -753,7 +781,7 @@ function AdminAccountManagement() {
                                             <p><strong>Room Number:</strong> {selectedStudent.roomnumber || 'Not assigned'}</p>
                                             <p><strong>Account Status:</strong> {selectedStudent.accountStatus?.isConfirmed ? 'Confirmed' : 'Pending'}</p>
                                             <p><strong>Submission Date:</strong> {selectedStudent.accountStatus?.submissionDate}</p>
-                                            {selectedStudent.accountStatus?.verificationDate && (
+                                            {selectedStudent.accountStatus?.isConfirmed && (
                                                 <p><strong>Verification Date:</strong> {selectedStudent.accountStatus.verificationDate}</p>
                                             )}
                                         </div>

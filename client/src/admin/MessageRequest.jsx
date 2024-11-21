@@ -36,6 +36,42 @@ function AdminMessageRequest() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [messageToDelete, setMessageToDelete] = useState(null);
 
+    // Separate filter states for confirmed messages
+    const [confirmedFilterInputs, setConfirmedFilterInputs] = useState({
+        messageid: '',
+        studentid: '',
+        firstname: '',
+        lastname: '',
+        date: ''
+    });
+    const [confirmedActiveFilters, setConfirmedActiveFilters] = useState({
+        messageid: '',
+        studentid: '',
+        firstname: '',
+        lastname: '',
+        date: ''
+    });
+
+    // Separate filter states for pending messages
+    const [pendingFilterInputs, setPendingFilterInputs] = useState({
+        messageid: '',
+        studentid: '',
+        firstname: '',
+        lastname: '',
+        date: ''
+    });
+    const [pendingActiveFilters, setPendingActiveFilters] = useState({
+        messageid: '',
+        studentid: '',
+        firstname: '',
+        lastname: '',
+        date: ''
+    });
+
+    // Add new state for the info modal
+    const [showInfoModal, setShowInfoModal] = useState(false);
+    const [selectedMessage, setSelectedMessage] = useState(null);
+
     const fetchMessages = async () => {
         console.log('Attempting to fetch messages...');
         try {
@@ -154,49 +190,143 @@ function AdminMessageRequest() {
         return formatted;
     };
 
-    const handleFilterChange = (e) => {
+    // Separate handlers for confirmed messages
+    const handleConfirmedFilterChange = (e) => {
         const { name, value } = e.target;
-        console.log('Filter changed:', { name, value });
-        setFilterInputs(prev => {
-            const newInputs = {
-                ...prev,
-                [name]: value
-            };
-            console.log('New filter inputs:', newInputs);
-            return newInputs;
-        });
-        setActiveFilters(prev => {
-            const newFilters = {
-                ...prev,
-                [name]: value
-            };
-            console.log('New active filters:', newFilters);
-            return newFilters;
+        setConfirmedFilterInputs(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        setConfirmedActiveFilters(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Separate handlers for pending messages
+    const handlePendingFilterChange = (e) => {
+        const { name, value } = e.target;
+        setPendingFilterInputs(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        setPendingActiveFilters(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Separate filter functions for confirmed messages
+    const getFilteredConfirmedMessages = (messages) => {
+        return messages.filter(message => {
+            const messageid = message.messageid?.toString().toLowerCase() || '';
+            const studentid = message.student?.studentid?.toString().toLowerCase() || '';
+            const firstname = message.student?.fullname?.firstname?.toLowerCase() || '';
+            const lastname = message.student?.fullname?.lastname?.toLowerCase() || '';
+            const date = message.requestStatus?.confirmationDate || '';
+
+            return (
+                messageid.includes(confirmedActiveFilters.messageid.toLowerCase()) &&
+                studentid.includes(confirmedActiveFilters.studentid.toLowerCase()) &&
+                firstname.includes(confirmedActiveFilters.firstname.toLowerCase()) &&
+                lastname.includes(confirmedActiveFilters.lastname.toLowerCase()) &&
+                date.includes(confirmedActiveFilters.date)
+            );
         });
     };
 
-    const getFilteredMessages = (messages) => {
-        console.log('Filtering messages with active filters:', activeFilters);
-        const filtered = messages.filter(message => {
-            const studentid = message.student?.studentid?.toString() || '';
+    // Separate filter functions for pending messages
+    const getFilteredPendingMessages = (messages) => {
+        return messages.filter(message => {
+            const messageid = message.messageid?.toString().toLowerCase() || '';
+            const studentid = message.student?.studentid?.toString().toLowerCase() || '';
             const firstname = message.student?.fullname?.firstname?.toLowerCase() || '';
             const lastname = message.student?.fullname?.lastname?.toLowerCase() || '';
             const date = message.requestStatus?.requestDate || '';
 
-            const matches = (
-                studentid.includes(activeFilters.studentid.toLowerCase()) &&
-                firstname.includes(activeFilters.firstname.toLowerCase()) &&
-                lastname.includes(activeFilters.lastname.toLowerCase()) &&
-                date.includes(activeFilters.date)
+            return (
+                messageid.includes(pendingActiveFilters.messageid.toLowerCase()) &&
+                studentid.includes(pendingActiveFilters.studentid.toLowerCase()) &&
+                firstname.includes(pendingActiveFilters.firstname.toLowerCase()) &&
+                lastname.includes(pendingActiveFilters.lastname.toLowerCase()) &&
+                date.includes(pendingActiveFilters.date)
             );
-
-            return matches;
         });
-        console.log('Filtered messages:', filtered);
-        return filtered;
     };
 
-    const columns = [
+    // Add handler for info button click
+    const handleInfoClick = (message) => {
+        setSelectedMessage(message);
+        setShowInfoModal(true);
+    };
+
+    // Modify the column definitions to include the info button
+    const confirmedColumns = [
+        {
+            name: 'Message ID',
+            selector: row => row.messageid,
+            sortable: true,
+        },
+        {
+            name: 'Student ID',
+            selector: row => row.student?.studentid || 'N/A',
+            sortable: true,
+        },
+        {
+            name: 'Full Name',
+            selector: row => {
+                const student = row.student;
+                return student ? `${student.fullname.firstname} ${student.fullname.lastname}` : 'N/A';
+            },
+            sortable: true,
+        },
+        {
+            name: 'Description',
+            selector: row => row.description,
+            sortable: true,
+        },
+        {
+            name: 'Confirmation Date',
+            selector: row => row.requestStatus.confirmationDate || 'Pending',
+            sortable: true,
+        },
+        {
+            name: 'Status',
+            selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
+            sortable: true,
+        },
+        {
+            name: 'Actions',
+            cell: row => (
+                <div className="d-flex justify-content-end w-100">
+                    <button
+                        className="btn btn-info btn-sm me-1"
+                        onClick={() => handleInfoClick(row)}
+                    >
+                        <i className="bi bi-info-circle-fill text-black" style={{ fontSize: "0.875rem" }} />
+                    </button>
+                    {!row.requestStatus.isConfirmed && (
+                        <button
+                            className="btn btn-success btn-sm me-1"
+                            onClick={() => openConfirmModal(row.messageid)}
+                        >
+                            <i className="bi bi-check-square-fill" style={{ fontSize: "0.875rem" }} />
+                        </button>
+                    )}
+                    <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => openDeleteModal(row.messageid)}
+                    >
+                        <i className="bi bi-trash2-fill" style={{ fontSize: "0.875rem" }} />
+                    </button>
+                </div>
+            ),
+            width: '120px',
+            right: true,
+        },
+    ];
+
+    const pendingColumns = [
         {
             name: 'Message ID',
             selector: row => row.messageid,
@@ -234,6 +364,12 @@ function AdminMessageRequest() {
             name: 'Actions',
             cell: row => (
                 <div className="d-flex justify-content-end w-100">
+                    <button
+                        className="btn btn-info btn-sm me-1"
+                        onClick={() => handleInfoClick(row)}
+                    >
+                        <i className="bi bi-info-circle-fill text-black" style={{ fontSize: "0.875rem" }} />
+                    </button>
                     {!row.requestStatus.isConfirmed && (
                         <button
                             className="btn btn-success btn-sm me-1"
@@ -351,7 +487,14 @@ function AdminMessageRequest() {
                     </Link>
                     <ul className="ms-auto navbar-nav flex-row">
                         <li className="nav-item">
-                            <Link className="btn btn-outline-dark text-center border-2">
+                            <Link
+                                className="btn btn-outline-dark text-center border-2"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    localStorage.removeItem('adminLoggedIn');
+                                    window.location.href = '/';
+                                }}
+                            >
                                 Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
                             </Link>
                         </li>
@@ -422,10 +565,20 @@ function AdminMessageRequest() {
                             <input
                                 className="form-control"
                                 type="text"
+                                placeholder="Message ID"
+                                name="messageid"
+                                value={confirmedFilterInputs.messageid}
+                                onChange={handleConfirmedFilterChange}
+                            />
+                        </div>
+                        <div className="col">
+                            <input
+                                className="form-control"
+                                type="text"
                                 placeholder="Student ID"
                                 name="studentid"
-                                value={filterInputs.studentid}
-                                onChange={handleFilterChange}
+                                value={confirmedFilterInputs.studentid}
+                                onChange={handleConfirmedFilterChange}
                             />
                         </div>
                         <div className="col">
@@ -434,8 +587,8 @@ function AdminMessageRequest() {
                                 type="text"
                                 placeholder="First Name"
                                 name="firstname"
-                                value={filterInputs.firstname}
-                                onChange={handleFilterChange}
+                                value={confirmedFilterInputs.firstname}
+                                onChange={handleConfirmedFilterChange}
                             />
                         </div>
                         <div className="col">
@@ -444,8 +597,8 @@ function AdminMessageRequest() {
                                 type="text"
                                 placeholder="Last Name"
                                 name="lastname"
-                                value={filterInputs.lastname}
-                                onChange={handleFilterChange}
+                                value={confirmedFilterInputs.lastname}
+                                onChange={handleConfirmedFilterChange}
                             />
                         </div>
                         <div className="col">
@@ -453,27 +606,27 @@ function AdminMessageRequest() {
                                 className="form-control"
                                 type="date"
                                 name="date"
-                                value={filterInputs.date}
-                                onChange={handleFilterChange}
+                                value={confirmedFilterInputs.date}
+                                onChange={handleConfirmedFilterChange}
                             />
                         </div>
                         <div className="col-auto">
                             <button
                                 className="btn btn-danger"
                                 onClick={() => {
-                                    setFilterInputs({
+                                    setConfirmedFilterInputs({
+                                        messageid: '',
                                         studentid: '',
                                         firstname: '',
                                         lastname: '',
-                                        date: '',
-                                        time: ''
+                                        date: ''
                                     });
-                                    setActiveFilters({
+                                    setConfirmedActiveFilters({
+                                        messageid: '',
                                         studentid: '',
                                         firstname: '',
                                         lastname: '',
-                                        date: '',
-                                        time: ''
+                                        date: ''
                                     });
                                 }}
                             >
@@ -483,8 +636,8 @@ function AdminMessageRequest() {
                     </div>
                     <DataTable
                         className="border"
-                        columns={columns}
-                        data={getFilteredMessages(confirmedYesMessages)}
+                        columns={confirmedColumns}
+                        data={getFilteredConfirmedMessages(confirmedYesMessages)}
                         pagination
                         responsive
                         highlightOnHover
@@ -500,10 +653,20 @@ function AdminMessageRequest() {
                             <input
                                 className="form-control"
                                 type="text"
+                                placeholder="Message ID"
+                                name="messageid"
+                                value={pendingFilterInputs.messageid}
+                                onChange={handlePendingFilterChange}
+                            />
+                        </div>
+                        <div className="col">
+                            <input
+                                className="form-control"
+                                type="text"
                                 placeholder="Student ID"
                                 name="studentid"
-                                value={filterInputs.studentid}
-                                onChange={handleFilterChange}
+                                value={pendingFilterInputs.studentid}
+                                onChange={handlePendingFilterChange}
                             />
                         </div>
                         <div className="col">
@@ -512,8 +675,8 @@ function AdminMessageRequest() {
                                 type="text"
                                 placeholder="First Name"
                                 name="firstname"
-                                value={filterInputs.firstname}
-                                onChange={handleFilterChange}
+                                value={pendingFilterInputs.firstname}
+                                onChange={handlePendingFilterChange}
                             />
                         </div>
                         <div className="col">
@@ -522,8 +685,8 @@ function AdminMessageRequest() {
                                 type="text"
                                 placeholder="Last Name"
                                 name="lastname"
-                                value={filterInputs.lastname}
-                                onChange={handleFilterChange}
+                                value={pendingFilterInputs.lastname}
+                                onChange={handlePendingFilterChange}
                             />
                         </div>
                         <div className="col">
@@ -531,27 +694,27 @@ function AdminMessageRequest() {
                                 className="form-control"
                                 type="date"
                                 name="date"
-                                value={filterInputs.date}
-                                onChange={handleFilterChange}
+                                value={pendingFilterInputs.date}
+                                onChange={handlePendingFilterChange}
                             />
                         </div>
                         <div className="col-auto">
                             <button
                                 className="btn btn-danger"
                                 onClick={() => {
-                                    setFilterInputs({
+                                    setPendingFilterInputs({
+                                        messageid: '',
                                         studentid: '',
                                         firstname: '',
                                         lastname: '',
-                                        date: '',
-                                        time: ''
+                                        date: ''
                                     });
-                                    setActiveFilters({
+                                    setPendingActiveFilters({
+                                        messageid: '',
                                         studentid: '',
                                         firstname: '',
                                         lastname: '',
-                                        date: '',
-                                        time: ''
+                                        date: ''
                                     });
                                 }}
                             >
@@ -561,8 +724,8 @@ function AdminMessageRequest() {
                     </div>
                     <DataTable
                         className="border mb-5"
-                        columns={columns}
-                        data={getFilteredMessages(confirmedNoMessages)}
+                        columns={pendingColumns}
+                        data={getFilteredPendingMessages(confirmedNoMessages)}
                         pagination
                         responsive
                         highlightOnHover
@@ -693,6 +856,45 @@ function AdminMessageRequest() {
             {/* Modal Backdrop for Delete Confirmation */}
             {showDeleteModal && (
                 <div className="modal-backdrop fade show"></div>
+            )}
+
+            {/* Info Modal */}
+            {showInfoModal && selectedMessage && (
+                <>
+                    <div className="modal fade show"
+                        style={{ display: 'block' }}
+                        tabIndex="-1"
+                        role="dialog"
+                        aria-labelledby="infoModalLabel"
+                        aria-hidden="true">
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title" id="infoModalLabel">Message Details</h5>
+                                    <button type="button"
+                                        className="btn-close"
+                                        onClick={() => setShowInfoModal(false)}
+                                        aria-label="Close">
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="fw-bold">Description:</label>
+                                        <p className="mb-0">{selectedMessage.description}</p>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowInfoModal(false)}>
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show"></div>
+                </>
             )}
         </>
     );

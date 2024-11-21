@@ -50,7 +50,7 @@ function AdminLogin() {
 
         } catch (error) {
             console.error('Login error:', error);
-            setError(error.message || 'Login failed');
+            setError('Unable to connect to the server. Please check your internet connection and try again.');
         }
     };
 

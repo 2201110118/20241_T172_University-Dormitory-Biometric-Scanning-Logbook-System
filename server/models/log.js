@@ -8,9 +8,9 @@ const formatDate = (date) => {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true,
+        hour12: true
     };
-    return new Intl.DateTimeFormat('en-US', options).format(date);
+    return new Date(date).toLocaleString('en-US', options);
 };
 
 const logModel = mongoose.model('Logs', new mongoose.Schema({
@@ -26,12 +26,16 @@ const logModel = mongoose.model('Logs', new mongoose.Schema({
     },
     timestamp: {
         type: String,
-        default: () => formatDate(new Date())
+        default: () => formatDate(new Date()),
+        get: (date) => formatDate(date)
     },
     logid: {
         type: Number,
         required: true
     }
+}, {
+    toJSON: { getters: true },
+    toObject: { getters: true }
 }).index({ logid: 1 }, { unique: true }));
 
 export default logModel;

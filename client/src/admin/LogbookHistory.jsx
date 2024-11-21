@@ -198,7 +198,14 @@ function AdminLogbookHistory() {
                     </Link>
                     <ul className="ms-auto navbar-nav flex-row">
                         <li className="nav-item">
-                            <Link className="btn btn-outline-dark text-center border-2">
+                            <Link
+                                className="btn btn-outline-dark text-center border-2"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    localStorage.removeItem('adminLoggedIn');
+                                    window.location.href = '/';
+                                }}
+                            >
                                 Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
                             </Link>
                         </li>
