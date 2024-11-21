@@ -2,10 +2,12 @@ import Messages from '../models/message.js';
 
 const getMessages = async (req, res) => {
     try {
-        const messages = await Messages.find();
+        const messages = await Messages.find()
+            .populate('student', 'studentid fullname roomnumber')
+            .sort({ 'requestStatus.requestDate': -1 });
         res.status(200).json(messages);
     } catch (error) {
-        console.error('Error fetching students:', error);
+        console.error('Error fetching messages:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -44,7 +46,12 @@ const updateMessage = async (req, res) => {
         const messageid = req.params.id;
         const message = await Messages.findOneAndUpdate(
             { messageid: messageid },
-            { confirmedRequest: req.body.confirmedRequest },
+            {
+                $set: {
+                    'requestStatus.isConfirmed': req.body.requestStatus.isConfirmed,
+                    'requestStatus.confirmationDate': req.body.requestStatus.confirmationDate
+                }
+            },
             { new: true }
         );
 

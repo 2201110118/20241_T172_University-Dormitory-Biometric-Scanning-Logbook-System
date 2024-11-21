@@ -8,15 +8,38 @@ import AdminMessageRequest from './admin/MessageRequest';
 import AdminLogbookHistory from './admin/LogbookHistory';
 import AdminDashboard from './admin/Dashboard';
 import AdminLogin from './admin/Login';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminSettings from './admin/Settings';
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/AdminLogbookHistory" element={<AdminLogbookHistory />} />
-        <Route path="/AdminAccountManagement" element={<AdminAccountManagement />} />
-        <Route path="/AdminMessageRequest" element={<AdminMessageRequest />} />
-        <Route path="/AdminDashboard" element={<AdminDashboard />} />
+        <Route path="/AdminLogbookHistory" element={
+          <ProtectedRoute>
+            <AdminLogbookHistory />
+          </ProtectedRoute>
+        } />
+        <Route path="/AdminAccountManagement" element={
+          <ProtectedRoute>
+            <AdminAccountManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/AdminMessageRequest" element={
+          <ProtectedRoute>
+            <AdminMessageRequest />
+          </ProtectedRoute>
+        } />
+        <Route path="/AdminDashboard" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/AdminSettings" element={
+          <ProtectedRoute>
+            <AdminSettings />
+          </ProtectedRoute>
+        } />
         <Route path="/" element={<AdminLogin />} />
       </Routes>
     </Router>
@@ -24,3 +47,4 @@ const App = () => {
 }
 
 export default App;
+

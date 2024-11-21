@@ -9,6 +9,8 @@ function AdminLogbookHistory() {
     const [filterStudentId, setFilterStudentId] = useState('');
     const [selectedDate, setSelectedDate] = useState("");
     const [selectedTime, setSelectedTime] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [logToDelete, setLogToDelete] = useState(null);
 
     const fetchLogs = async () => {
         try {
@@ -26,15 +28,29 @@ function AdminLogbookHistory() {
         fetchLogs();
     }, []);
 
-    const handleDelete = async (logid) => {
-        const isConfirmed = window.confirm("Are you sure you want to delete this log?");
-        if (!isConfirmed) return;
+    const openDeleteModal = (logid) => {
+        console.log('Opening delete modal for log ID:', logid);
+        setLogToDelete(logid);
+        setShowDeleteModal(true);
+    };
+
+    const handleDelete = async () => {
+        console.log('Attempting to delete log ID:', logToDelete);
         try {
-            const response = await fetch(`http://localhost:5000/api/log/${logid}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Failed to delete log');
-            fetchLogs();
+            const response = await fetch(`http://localhost:5000/api/log/${logToDelete}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                console.error('Delete response not OK:', response);
+                throw new Error('Failed to delete log');
+            }
+
+            console.log('Log successfully deleted, fetching updated logs...');
+            await fetchLogs();
+            setShowDeleteModal(false);
         } catch (error) {
-            console.error('Error deleting log:', error);
+            console.error('Error in handleDelete:', error);
         }
     };
 
@@ -43,37 +59,71 @@ function AdminLogbookHistory() {
             name: 'Log ID',
             selector: row => row.logid,
             sortable: true,
-        },
-        {
-            name: 'Full Name',
-            selector: row => `${row.fullname[0].firstname} ${row.fullname[0].lastname}`,
-            sortable: true,
+            width: '8%',
         },
         {
             name: 'Student ID',
-            selector: row => row.studentid,
+            selector: row => row.student?.studentid || 'N/A',
             sortable: true,
+            width: '12%',
+        },
+        {
+            name: 'Full Name',
+            selector: row => {
+                const student = row.student;
+                return student ?
+                    `${student.fullname.firstname} ${student.fullname.lastname}` :
+                    'N/A';
+            },
+            sortable: true,
+            width: '25%',
         },
         {
             name: 'Room Number',
-            selector: row => row.roomnumber,
+            selector: row => row.student?.roomnumber || 'N/A',
             sortable: true,
+            width: '15%',
         },
         {
-            name: 'Date',
-            selector: row => row.date,
+            name: 'Log Type',
+            selector: row => row.logType,
             sortable: true,
+            width: '15%',
+        },
+        {
+            name: 'Timestamp',
+            selector: row => row.timestamp,
+            sortable: true,
+            width: '17%',
+        },
+        {
+            name: 'Actions',
+            cell: row => (
+                <div className="d-flex justify-content-end w-100">
+                    <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => openDeleteModal(row.logid)}
+                    >
+                        <i className="bi bi-trash2-fill" />
+                    </button>
+                </div>
+            ),
+            width: '8%',
+            right: true,
         }
     ];
 
     const filteredData = logs.filter(item => {
-        const fullName = `${item.fullname[0].firstname} ${item.fullname[0].lastname}`.toLowerCase();
+        const studentFirstName = item.student?.fullname?.firstname?.toLowerCase() || '';
+        const studentLastName = item.student?.fullname?.lastname?.toLowerCase() || '';
+        const studentId = item.student?.studentid?.toString() || '';
+
         const matchesName =
-            (filterFirstName === '' || item.fullname[0].firstname.toLowerCase().includes(filterFirstName.toLowerCase())) &&
-            (filterLastName === '' || item.fullname[0].lastname.toLowerCase().includes(filterLastName.toLowerCase()));
-        const matchesStudentId = !filterStudentId || item.studentid?.toString().includes(filterStudentId);
-        const matchesDate = !selectedDate || item.date.includes(selectedDate);
-        const matchesTime = !selectedTime || item.date.includes(selectedTime);
+            (filterFirstName === '' || studentFirstName.includes(filterFirstName.toLowerCase())) &&
+            (filterLastName === '' || studentLastName.includes(filterLastName.toLowerCase()));
+        const matchesStudentId = !filterStudentId || studentId.includes(filterStudentId);
+        const matchesDate = !selectedDate || item.timestamp.includes(selectedDate);
+        const matchesTime = !selectedTime || item.timestamp.includes(selectedTime);
 
         return matchesName && matchesStudentId && matchesDate && matchesTime;
     });
@@ -111,9 +161,27 @@ function AdminLogbookHistory() {
         },
     };
 
+    useEffect(() => {
+        if (showDeleteModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showDeleteModal]);
+
     return (
-        <div>
-            <header className="navbar border-dark border-bottom shadow container-fluid sticky-top bg-white">
+        <>
+            <header className="navbar border-dark border-bottom shadow container-fluid bg-white"
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1030
+                }}>
                 <div className="container-fluid">
                     <Link>
                         <img
@@ -130,16 +198,6 @@ function AdminLogbookHistory() {
                     </Link>
                     <ul className="ms-auto navbar-nav flex-row">
                         <li className="nav-item">
-                            <Link href="#" style={{ color: "inherit" }}>
-                                <i className="bi bi-bell-fill me-4" style={{ fontSize: "1.56rem" }} />
-                            </Link>
-                        </li>
-                        <li className="nav-item">
-                            <Link href="#" style={{ color: "inherit" }}>
-                                <i className="bi bi-info-circle-fill me-4" style={{ fontSize: "1.56rem" }} />
-                            </Link>
-                        </li>
-                        <li className="nav-item">
                             <Link className="btn btn-outline-dark text-center border-2">
                                 Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
                             </Link>
@@ -148,8 +206,14 @@ function AdminLogbookHistory() {
                 </div>
             </header>
 
-            <div className="container-fluid d-flex row">
-                <nav className="sidebar bg-dark fixed-top" style={{ width: "250px", height: "100vh", marginTop: "64px" }}>
+            <div className="container-fluid d-flex row" style={{ marginTop: '64px' }}>
+                <nav className="sidebar bg-dark fixed-top"
+                    style={{
+                        width: "250px",
+                        height: "100vh",
+                        marginTop: "64px",
+                        zIndex: 1020
+                    }}>
                     <ul className="flex-column text-white text-decoration-none navbar-nav">
                         <li className="nav-item border-bottom bordor-white">
                             <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
@@ -182,7 +246,7 @@ function AdminLogbookHistory() {
                             </Link>
                         </li>
                         <li className="nav-item border-bottom bordor-white">
-                            <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                            <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                 <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
                                 <span className="ms-2 fw-bold fs-6">Setting</span>
                             </Link>
@@ -190,7 +254,12 @@ function AdminLogbookHistory() {
                     </ul>
                 </nav>
 
-                <main className="container-fluid px-4" style={{ flex: 1, marginLeft: "275px" }}>
+                <main className="container-fluid px-4"
+                    style={{
+                        flex: 1,
+                        marginLeft: "275px",
+                        marginTop: "20px"
+                    }}>
                     <h2 className="mt-4 mb-3">Logbook History</h2>
                     <div className="border-3 border-bottom border-black mb-4"></div>
                     <div className="row">
@@ -268,7 +337,48 @@ function AdminLogbookHistory() {
                     />
                 </main>
             </div>
-        </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <>
+                    <div className={`modal fade show`}
+                        style={{ display: 'block' }}
+                        tabIndex="-1"
+                        role="dialog"
+                        aria-labelledby="deleteModalLabel"
+                        aria-hidden="true">
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                                    <button type="button"
+                                        className="btn-close"
+                                        onClick={() => setShowDeleteModal(false)}
+                                        aria-label="Close">
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    Are you sure you want to delete this log? This action cannot be undone.
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowDeleteModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button type="button"
+                                        className="btn btn-danger"
+                                        onClick={handleDelete}>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show"></div>
+                </>
+            )}
+        </>
     );
 }
 

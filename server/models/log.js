@@ -14,14 +14,24 @@ const formatDate = (date) => {
 };
 
 const logModel = mongoose.model('Logs', new mongoose.Schema({
-    fullname: [{
-        firstname: { type: String, required: true },
-        lastname: { type: String, required: true }
-    }],
-    studentid: { type: Number, required: true },
-    roomnumber: { type: String, required: true },
-    date: { type: String, default: () => { return formatDate(new Date()) } },
-    logid: { type: Number, required: true }
+    student: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Students',
+        required: true
+    },
+    logType: {
+        type: String,
+        enum: ['login', 'logout'],
+        required: true
+    },
+    timestamp: {
+        type: String,
+        default: () => formatDate(new Date())
+    },
+    logid: {
+        type: Number,
+        required: true
+    }
 }).index({ logid: 1 }, { unique: true }));
 
 export default logModel;
