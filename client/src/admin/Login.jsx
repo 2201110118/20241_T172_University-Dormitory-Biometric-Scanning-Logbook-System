@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
 import logo from '../assets/logo.png';
 import logotitle from '../assets/logotitle.png';
+import './Login.css';
 
 function AdminLogin() {
     const navigate = useNavigate();
@@ -12,6 +13,12 @@ function AdminLogin() {
         password: ''
     });
     const [error, setError] = useState('');
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        setIsVisible(true);
+        return () => setIsVisible(false);
+    }, []);
 
     const handleChange = (e) => {
         setFormData({
@@ -37,7 +44,8 @@ function AdminLogin() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
+                setError(data.message || 'Login failed');
+                return;
             }
 
             // Store both login flag and admin ID
@@ -56,7 +64,7 @@ function AdminLogin() {
 
     return (
         <div
-            className="min-vh-100 w-100 d-flex justify-content-center align-items-center"
+            className={`login-page min-vh-100 w-100 d-flex justify-content-center align-items-center ${isVisible ? 'visible' : ''}`}
             style={{
                 backgroundImage: `url(${wallpaper})`,
                 backgroundSize: 'cover',
@@ -64,7 +72,7 @@ function AdminLogin() {
                 backgroundRepeat: 'no-repeat'
             }}
         >
-            <div className="shadow-lg d-flex rounded overflow-hidden">
+            <div className={`login-container shadow-lg d-flex rounded overflow-hidden ${isVisible ? 'visible' : ''}`}>
                 <div
                     className="position-relative"
                     style={{
