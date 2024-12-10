@@ -1,13 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { Link } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
+import TableLoader from '../components/TableLoader';
+import customTableStyles from '../components/TableStyles';
+import AdminHeader from '../components/AdminHeader';
 
 function AdminDashboard() {
     const [logs, setLogs] = useState([]);
     const [students, setStudents] = useState([]);
     const [messages, setMessages] = useState([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+    const [isLoadingStudents, setIsLoadingStudents] = useState(true);
 
     const fetchLogs = async () => {
+        setIsLoadingLogs(true);
         try {
             const response = await fetch('http://localhost:5000/api/log/');
             if (!response.ok) throw new Error('Network response was not ok');
@@ -16,10 +23,13 @@ function AdminDashboard() {
             setLogs(sortedData);
         } catch (error) {
             console.error(`Error fetching logs: ${error}`);
+        } finally {
+            setIsLoadingLogs(false);
         }
     };
 
     const fetchStudents = async () => {
+        setIsLoadingStudents(true);
         try {
             const response = await fetch('http://localhost:5000/api/student/');
             if (!response.ok) throw new Error('Network response was not ok');
@@ -27,10 +37,13 @@ function AdminDashboard() {
             setStudents(data);
         } catch (error) {
             console.error('Error fetching students:', error);
+        } finally {
+            setIsLoadingStudents(false);
         }
     };
 
     const fetchMessages = async () => {
+        setIsLoadingMessages(true);
         try {
             const response = await fetch("http://localhost:5000/api/message");
             if (!response.ok) throw new Error('Network response was not ok');
@@ -40,6 +53,8 @@ function AdminDashboard() {
             setMessages(sortedData);
         } catch (error) {
             console.error(`Error fetching messages: ${error}`);
+        } finally {
+            setIsLoadingMessages(false);
         }
     }
 
@@ -88,7 +103,14 @@ function AdminDashboard() {
         },
         {
             name: 'Timestamp',
-            selector: row => row.timestamp,
+            selector: row => {
+                const date = new Date(row.timestamp);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            },
             sortable: false,
             width: '200px',
         }
@@ -122,7 +144,14 @@ function AdminDashboard() {
         },
         {
             name: 'Request Date',
-            selector: row => row.requestStatus.requestDate,
+            selector: row => {
+                const date = new Date(row.requestStatus.requestDate);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            },
             sortable: false,
         },
         {
@@ -166,9 +195,7 @@ function AdminDashboard() {
                 return new Date(date).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    day: 'numeric'
                 });
             },
             sortable: false,
@@ -214,9 +241,7 @@ function AdminDashboard() {
                 return new Date(date).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    day: 'numeric'
                 });
             },
             sortable: false,
@@ -227,46 +252,6 @@ function AdminDashboard() {
             }
         }
     ];
-
-    const customStyles = {
-        table: {
-            style: {
-                backgroundColor: 'white',
-            },
-        },
-        rows: {
-            style: {
-                minHeight: '45px',
-                padding: '2px 0px',
-            },
-        },
-        headCells: {
-            style: {
-                paddingLeft: '8px',
-                paddingRight: '8px',
-                backgroundColor: '#f8f9fa',
-                fontWeight: 'bold',
-                minHeight: '45px',
-                fontSize: '0.9rem',
-            },
-        },
-        cells: {
-            style: {
-                paddingLeft: '8px',
-                paddingRight: '8px',
-                paddingTop: '4px',
-                paddingBottom: '4px',
-                fontSize: '0.875rem',
-                whiteSpace: 'pre-wrap'
-            },
-        },
-        subHeader: {
-            style: {
-                padding: '0px',
-                marginBottom: '8px',
-            },
-        },
-    };
 
     // Fix the filter functions for students
     const getRegisteredStudents = () => {
@@ -279,182 +264,271 @@ function AdminDashboard() {
 
     return (
         <>
-            <header className="navbar border-dark border-bottom shadow container-fluid bg-white"
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1030
-                }}>
-                <div className="container-fluid">
-                    <Link>
-                        <img
-                            src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png"
-                            alt="Buksu Logo"
-                            width="48"
-                            height="48"
-                        />
-                    </Link>
-                    <Link className="multiline-text ms-1 text-decoration-none fw-bold fs-5" style={{ lineHeight: "1.1rem" }}>
-                        <span style={{ color: "#0056b3" }}>Buksu</span>
-                        <br />
-                        <span style={{ color: "#003366" }}>Mahogany Dormitory</span>
-                    </Link>
-                    <ul className="ms-auto navbar-nav flex-row">
-                        <li className="nav-item">
-                            <Link
-                                to="/"
-                                className="btn btn-outline-dark text-center border-2"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    localStorage.removeItem('adminLoggedIn');
-                                    window.location.href = '/';
-                                }}
-                            >
-                                Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
-                            </Link>
-                        </li>
-                    </ul>
-                </div>
-            </header>
+            <AdminHeader />
 
-            <div className="container-fluid d-flex row" style={{ marginTop: '64px' }}>
-                <nav className="sidebar bg-dark fixed-top"
-                    style={{
-                        width: "250px",
-                        height: "100vh",
-                        marginTop: "64px",
-                        zIndex: 1020
-                    }}>
-                    <ul className="flex-column text-white text-decoration-none navbar-nav">
-                        <li className="nav-item border-bottom border-white">
-                            <Link to="#" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
-                                <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Dashboard</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom border-white">
-                            <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6 text-start">Account Management</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom border-white">
-                            <Link to="/AdminMessageRequest" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Message Request</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom border-white">
-                            <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Logbook History</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom border-white">
-                            <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Report Logs</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom border-white">
-                            <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Setting</span>
-                            </Link>
-                        </li>
-                    </ul>
-                </nav>
+            <div className="d-flex flex-column min-vh-100">
+                <div style={{ height: '64px' }}></div> {/* Spacer div to compensate for fixed header */}
+                <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
+                    <div className="d-flex" style={{ minHeight: 'calc(100vh - 64px)' }}>
+                        <nav className="sidebar bg-dark"
+                            style={{
+                                width: "250px",
+                                position: "fixed",
+                                top: "64px",
+                                bottom: 0,
+                                left: 0,
+                                overflowY: "auto",
+                                zIndex: 1020
+                            }}>
+                            <ul className="flex-column text-white text-decoration-none navbar-nav">
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminDashboard" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
+                                        <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Dashboard</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6 text-start">Account Management</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Night Pass</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Logbook History</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Generate Report</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                    </Link>
+                                </li>
+                            </ul>
+                        </nav>
 
-                <main className="container-fluid px-4"
-                    style={{
-                        flex: 1,
-                        marginLeft: "275px",
-                        marginTop: "20px"
-                    }}>
-                    <div className="col">
-                        <h2 className="my-4">Dashboard</h2>
+                        <div className="flex-grow-1" style={{ marginLeft: "250px" }}>
+                            <div className="container-fluid p-4">
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h2 className="mb-0 fw-bold">Dashboard Overview</h2>
+                                    <div className="text-muted">
+                                        <i className="bi bi-clock me-2"></i>
+                                        {new Date().toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </div>
+                                </div>
 
-                        {/* First Row - Recent Logs and Night Pass Request */}
-                        <div className="row mb-4">
-                            {/* Recent Logs */}
-                            <div className="col-6">
-                                <div className="border-3 border-bottom border-black mt-2"></div>
-                                <h4 className="mt-3 mb-2 fw-normal">Recent Logs</h4>
-                                <DataTable
-                                    className="mb-3 border"
-                                    columns={logColumns}
-                                    data={logs.slice(0, 5)}
-                                    customStyles={customStyles}
-                                    pagination={false}
-                                    responsive
-                                    striped
-                                    highlightOnHover
-                                    noDataComponent="No logs found"
-                                    dense
-                                />
-                            </div>
+                                {/* Summary Cards */}
+                                <div className="row g-4 mb-4">
+                                    {/* Total Students Card */}
+                                    <div className="col-xl-3 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Total Students</h6>
+                                                        <h3 className="mb-0">{students.length}</h3>
+                                                    </div>
+                                                    <div className="bg-primary bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-people text-primary" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            {/* Recent Night Pass Request */}
-                            <div className="col-6">
-                                <div className="border-3 border-bottom border-black mt-2"></div>
-                                <h4 className="mt-3 mb-2 fw-normal">Recent Night Pass Request</h4>
-                                <DataTable
-                                    className="mb-3 border"
-                                    columns={messageColumns}
-                                    data={messages.filter(message => !message.requestStatus.isConfirmed).slice(0, 3)}
-                                    customStyles={customStyles}
-                                    pagination={false}
-                                    responsive
-                                    striped
-                                    highlightOnHover
-                                    noDataComponent="No unconfirmed message requests found"
-                                    dense
-                                />
-                            </div>
-                        </div>
+                                    {/* Registered Students Card */}
+                                    <div className="col-xl-3 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Registered Students</h6>
+                                                        <h3 className="mb-0">{getRegisteredStudents().length}</h3>
+                                                    </div>
+                                                    <div className="bg-success bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-person-check text-success" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        {/* Second Row - Recent Registered and Registration Requests */}
-                        <div className="row mb-4">
-                            {/* Recent Registered Students */}
-                            <div className="col-6">
-                                <div className="border-3 border-bottom border-black mt-2"></div>
-                                <h4 className="mt-3 mb-2 fw-normal">Recent Registered Students</h4>
-                                <DataTable
-                                    className="mb-3 border"
-                                    columns={registeredStudentColumns}
-                                    data={getRegisteredStudents().slice(0, 3)}
-                                    customStyles={customStyles}
-                                    pagination={false}
-                                    responsive
-                                    striped
-                                    highlightOnHover
-                                    noDataComponent="No registered students found"
-                                    dense
-                                />
-                            </div>
+                                    {/* Pending Registrations Card */}
+                                    <div className="col-xl-3 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Pending Registrations</h6>
+                                                        <h3 className="mb-0">{getUnregisteredStudents().length}</h3>
+                                                    </div>
+                                                    <div className="bg-warning bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-person-plus text-warning" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            {/* Recent Registration Requests */}
-                            <div className="col-6">
-                                <div className="border-3 border-bottom border-black mt-2"></div>
-                                <h4 className="mt-3 mb-2 fw-normal">Recent Registration Requests</h4>
-                                <DataTable
-                                    className="mb-3 border"
-                                    columns={unregisteredStudentColumns}
-                                    data={getUnregisteredStudents().slice(0, 3)}
-                                    customStyles={customStyles}
-                                    pagination={false}
-                                    responsive
-                                    striped
-                                    highlightOnHover
-                                    noDataComponent="No Registration Request found"
-                                    dense
-                                />
+                                    {/* Pending Night Passes Card */}
+                                    <div className="col-xl-3 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Pending Night Passes</h6>
+                                                        <h3 className="mb-0">
+                                                            {messages.filter(message => !message.requestStatus.isConfirmed).length}
+                                                        </h3>
+                                                    </div>
+                                                    <div className="bg-info bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-clock-history text-info" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Main Content Grid */}
+                                <div className="row g-4">
+                                    {/* Recent Logs */}
+                                    <div className="col-12 col-xl-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                <h5 className="mb-0">Recent Logs</h5>
+                                                <Link to="/AdminLogBookHistory" className="btn btn-sm btn-outline-primary">
+                                                    <i className="bi bi-clock-history me-2"></i>
+                                                    View Logbook History
+                                                </Link>
+                                            </div>
+                                            <div className="card-body p-0">
+                                                <DataTable
+                                                    columns={logColumns}
+                                                    data={logs.slice(0, 5)}
+                                                    customStyles={customTableStyles}
+                                                    pagination={false}
+                                                    responsive
+                                                    striped
+                                                    highlightOnHover
+                                                    progressPending={isLoadingLogs}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No logs found"
+                                                    dense
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Night Pass Requests */}
+                                    <div className="col-12 col-xl-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                <h5 className="mb-0">Night Pass Requests</h5>
+                                                <Link to="/AdminNightPass" className="btn btn-sm btn-outline-primary">
+                                                    <i className="bi bi-chat-left-dots me-2"></i>
+                                                    View Night Pass
+                                                </Link>
+                                            </div>
+                                            <div className="card-body p-0">
+                                                <DataTable
+                                                    columns={messageColumns}
+                                                    data={messages.filter(message => !message.requestStatus.isConfirmed).slice(0, 3)}
+                                                    customStyles={customTableStyles}
+                                                    pagination={false}
+                                                    responsive
+                                                    striped
+                                                    highlightOnHover
+                                                    progressPending={isLoadingMessages}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No pending requests"
+                                                    dense
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Registered Students */}
+                                    <div className="col-12 col-xl-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                <h5 className="mb-0">Recent Registered Students</h5>
+                                                <Link to="/AdminAccountManagement" className="btn btn-sm btn-outline-primary">
+                                                    <i className="bi bi-person-lines-fill me-2"></i>
+                                                    View Account Management
+                                                </Link>
+                                            </div>
+                                            <div className="card-body p-0">
+                                                <DataTable
+                                                    columns={registeredStudentColumns}
+                                                    data={getRegisteredStudents().slice(0, 3)}
+                                                    customStyles={customTableStyles}
+                                                    pagination={false}
+                                                    responsive
+                                                    striped
+                                                    highlightOnHover
+                                                    progressPending={isLoadingStudents}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No registered students found"
+                                                    dense
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Registration Requests */}
+                                    <div className="col-12 col-xl-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                <h5 className="mb-0">Recent Registration Requests</h5>
+                                                <Link
+                                                    to="/AdminAccountManagement?tab=unregistered"
+                                                    className="btn btn-sm btn-outline-primary"
+                                                >
+                                                    <i className="bi bi-person-plus me-2"></i>
+                                                    View Registration Requests
+                                                </Link>
+                                            </div>
+                                            <div className="card-body p-0">
+                                                <DataTable
+                                                    columns={unregisteredStudentColumns}
+                                                    data={getUnregisteredStudents().slice(0, 3)}
+                                                    customStyles={customTableStyles}
+                                                    pagination={false}
+                                                    responsive
+                                                    striped
+                                                    highlightOnHover
+                                                    progressPending={isLoadingStudents}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No Registration Request found"
+                                                    dense
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
         </>
     );
