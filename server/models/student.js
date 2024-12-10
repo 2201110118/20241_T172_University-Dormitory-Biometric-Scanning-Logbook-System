@@ -4,15 +4,13 @@ import Logs from './log.js';
 
 const formatDate = (date) => {
     if (!date) return null;
-    const options = {
+    const dateObj = new Date(date);
+
+    return dateObj.toLocaleString('en-US', {
         year: 'numeric',
         month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    };
-    return new Date(date).toLocaleString('en-US', options);
+        day: '2-digit'
+    });
 };
 
 const studentSchema = new mongoose.Schema({
@@ -39,6 +37,10 @@ const studentSchema = new mongoose.Schema({
     roomnumber: { type: Number, required: false },
     password: { type: String, required: true, minlength: 6, select: false },
     registeredaccount: {
+        type: Boolean,
+        default: false
+    },
+    archive: {
         type: Boolean,
         default: false
     },

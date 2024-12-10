@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
+import TableLoader from '../components/TableLoader';
+import customTableStyles from '../components/TableStyles';
+import AdminHeader from '../components/AdminHeader';
 
 function AdminLogbookHistory() {
     const [logs, setLogs] = useState([]);
@@ -11,8 +14,11 @@ function AdminLogbookHistory() {
     const [selectedTime, setSelectedTime] = useState('');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [logToDelete, setLogToDelete] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [filterDate, setFilterDate] = useState('');
 
     const fetchLogs = async () => {
+        setIsLoading(true);
         try {
             const response = await fetch('http://localhost:5000/api/log/');
             if (!response.ok) throw new Error('Network response was not ok');
@@ -21,6 +27,8 @@ function AdminLogbookHistory() {
             setLogs(sortedData);
         } catch (error) {
             console.error(`Error fetching logs: ${error}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -71,35 +79,39 @@ function AdminLogbookHistory() {
             name: 'Full Name',
             selector: row => {
                 const student = row.student;
-                return student ?
-                    `${student.fullname.firstname} ${student.fullname.lastname}` :
-                    'N/A';
+                return student ? `${student.fullname.firstname} ${student.fullname.lastname}` : 'N/A';
             },
             sortable: true,
-            width: '25%',
+            width: '20%',
         },
         {
             name: 'Room Number',
             selector: row => row.student?.roomnumber || 'N/A',
             sortable: true,
-            width: '15%',
+            width: '12%',
         },
         {
             name: 'Log Type',
             selector: row => row.logType,
             sortable: true,
-            width: '15%',
+            width: '12%',
         },
         {
-            name: 'Timestamp',
-            selector: row => row.timestamp,
+            name: 'Date',
+            selector: row => row.timestamp?.date || 'N/A',
             sortable: true,
-            width: '17%',
+            width: '12%',
+        },
+        {
+            name: 'Time',
+            selector: row => row.timestamp?.time || 'N/A',
+            sortable: true,
+            width: '12%',
         },
         {
             name: 'Actions',
             cell: row => (
-                <div className="d-flex justify-content-end w-100">
+                <div className="d-flex justify-content-end">
                     <button
                         className="btn btn-danger btn-sm"
                         onClick={() => openDeleteModal(row.logid)}
@@ -108,7 +120,7 @@ function AdminLogbookHistory() {
                     </button>
                 </div>
             ),
-            width: '8%',
+            width: '12%',
             right: true,
         }
     ];
@@ -118,48 +130,27 @@ function AdminLogbookHistory() {
         const studentLastName = item.student?.fullname?.lastname?.toLowerCase() || '';
         const studentId = item.student?.studentid?.toString() || '';
 
+        let logDate = '';
+        if (item.timestamp?.date) {
+            try {
+                const parts = item.timestamp.date.split('/');
+                if (parts.length === 3) {
+                    const [month, day, year] = parts;
+                    logDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                }
+            } catch (error) {
+                console.error('Date parsing error:', error);
+            }
+        }
+
         const matchesName =
             (filterFirstName === '' || studentFirstName.includes(filterFirstName.toLowerCase())) &&
             (filterLastName === '' || studentLastName.includes(filterLastName.toLowerCase()));
         const matchesStudentId = !filterStudentId || studentId.includes(filterStudentId);
-        const matchesDate = !selectedDate || item.timestamp.includes(selectedDate);
-        const matchesTime = !selectedTime || item.timestamp.includes(selectedTime);
+        const matchesDate = !filterDate || logDate === filterDate;
 
-        return matchesName && matchesStudentId && matchesDate && matchesTime;
+        return matchesName && matchesStudentId && matchesDate;
     });
-
-    const customStyles = {
-        rows: {
-            style: {
-                minHeight: '45px',
-                padding: '2px 0px',
-            },
-        },
-        headCells: {
-            style: {
-                paddingLeft: '8px',
-                paddingRight: '8px',
-                backgroundColor: '#f8f9fa',
-                fontWeight: 'bold',
-                minHeight: '45px',
-                borderTop: '1px solid #dee2e6',
-            },
-        },
-        cells: {
-            style: {
-                paddingLeft: '8px',
-                paddingRight: '8px',
-                paddingTop: '2px',
-                paddingBottom: '2px',
-            },
-        },
-        subHeader: {
-            style: {
-                padding: '0px',
-                marginBottom: '8px',
-            },
-        },
-    };
 
     useEffect(() => {
         if (showDeleteModal) {
@@ -174,175 +165,229 @@ function AdminLogbookHistory() {
 
     return (
         <>
-            <header className="navbar border-dark border-bottom shadow container-fluid bg-white"
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1030
-                }}>
-                <div className="container-fluid">
-                    <Link>
-                        <img
-                            src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png"
-                            alt="Buksu Logo"
-                            width="48"
-                            height="48"
-                        />
-                    </Link>
-                    <Link className="multiline-text ms-1 text-decoration-none fw-bold fs-5" style={{ lineHeight: "1.1rem" }}>
-                        <span style={{ color: "#0056b3" }}>Buksu</span>
-                        <br />
-                        <span style={{ color: "#003366" }}>Mahogany Dormitory</span>
-                    </Link>
-                    <ul className="ms-auto navbar-nav flex-row">
-                        <li className="nav-item">
-                            <Link
-                                className="btn btn-outline-dark text-center border-2"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    localStorage.removeItem('adminLoggedIn');
-                                    window.location.href = '/';
-                                }}
-                            >
-                                Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
-                            </Link>
-                        </li>
-                    </ul>
-                </div>
-            </header>
+            <AdminHeader />
+            <div className="d-flex flex-column min-vh-100">
+                <div style={{ height: '64px' }}></div> {/* Spacer div to compensate for fixed header */}
+                <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
+                    <div className="d-flex" style={{ minHeight: 'calc(100vh - 64px)' }}>
+                        <nav className="sidebar bg-dark"
+                            style={{
+                                width: "250px",
+                                position: "fixed",
+                                top: "64px",
+                                bottom: 0,
+                                left: 0,
+                                overflowY: "auto",
+                                zIndex: 1020
+                            }}>
+                            <ul className="flex-column text-white text-decoration-none navbar-nav">
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Dashboard</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Account Management</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Night Pass</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="#" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
+                                        <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Logbook History</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Generate Report</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                    </Link>
+                                </li>
+                            </ul>
+                        </nav>
 
-            <div className="container-fluid d-flex row" style={{ marginTop: '64px' }}>
-                <nav className="sidebar bg-dark fixed-top"
-                    style={{
-                        width: "250px",
-                        height: "100vh",
-                        marginTop: "64px",
-                        zIndex: 1020
-                    }}>
-                    <ul className="flex-column text-white text-decoration-none navbar-nav">
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Dashboard</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6 text-start">Account Management</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminMessageRequest" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Message Request</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminLogbookHistory" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
-                                <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Logbook History</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Report Logs</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Setting</span>
-                            </Link>
-                        </li>
-                    </ul>
-                </nav>
+                        <div className="flex-grow-1" style={{ marginLeft: "250px" }}>
+                            <div className="container-fluid p-4">
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h2 className="mb-0 fw-bold">Logbook History</h2>
+                                    <div className="text-muted">
+                                        <i className="bi bi-clock me-2"></i>
+                                        {new Date().toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </div>
+                                </div>
 
-                <main className="container-fluid px-4"
-                    style={{
-                        flex: 1,
-                        marginLeft: "275px",
-                        marginTop: "20px"
-                    }}>
-                    <h2 className="mt-4 mb-3">Logbook History</h2>
-                    <div className="border-3 border-bottom border-black mb-4"></div>
-                    <div className="row">
-                        <div className="col mb-3">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="First Name"
-                                value={filterFirstName}
-                                onChange={e => setFilterFirstName(e.target.value)}
-                            />
+                                {/* Summary Cards */}
+                                <div className="row g-4 mb-4">
+                                    {/* Total Logs */}
+                                    <div className="col-xl-4 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Total Logs</h6>
+                                                        <h3 className="mb-0">{logs.length}</h3>
+                                                    </div>
+                                                    <div className="bg-primary bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-journal-text text-primary" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Today's Logs */}
+                                    <div className="col-xl-4 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Today's Logs</h6>
+                                                        <h3 className="mb-0">
+                                                            {logs.filter(log => {
+                                                                const today = new Date().toLocaleDateString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: '2-digit',
+                                                                    day: '2-digit'
+                                                                });
+                                                                return today === log.timestamp?.date;
+                                                            }).length}
+                                                        </h3>
+                                                    </div>
+                                                    <div className="bg-success bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-calendar-check text-success" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Logs */}
+                                    <div className="col-xl-4 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Recent Logs</h6>
+                                                        <h3 className="mb-0">
+                                                            {logs.filter(log => {
+                                                                const lastWeek = new Date();
+                                                                lastWeek.setDate(lastWeek.getDate() - 7);
+                                                                const lastWeekStr = lastWeek.toLocaleDateString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: '2-digit',
+                                                                    day: '2-digit'
+                                                                });
+                                                                return log.timestamp?.date >= lastWeekStr;
+                                                            }).length}
+                                                        </h3>
+                                                    </div>
+                                                    <div className="bg-info bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-clock-history text-info" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Logs Table Card */}
+                                <div className="card border-0 shadow-sm">
+                                    <div className="card-header bg-transparent border-0 py-3">
+                                        <h5 className="mb-0 fw-bold">All Logs</h5>
+                                    </div>
+                                    <div className="card-body p-0">
+                                        <div className="p-4 border-bottom">
+                                            <div className="row g-3">
+                                                <div className="col">
+                                                    <input
+                                                        className="form-control"
+                                                        type="text"
+                                                        placeholder="First Name"
+                                                        value={filterFirstName}
+                                                        onChange={e => setFilterFirstName(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col">
+                                                    <input
+                                                        className="form-control"
+                                                        type="text"
+                                                        placeholder="Last Name"
+                                                        value={filterLastName}
+                                                        onChange={e => setFilterLastName(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col">
+                                                    <input
+                                                        className="form-control"
+                                                        type="text"
+                                                        placeholder="Student ID"
+                                                        value={filterStudentId}
+                                                        onChange={e => setFilterStudentId(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col">
+                                                    <input
+                                                        className="form-control"
+                                                        type="date"
+                                                        placeholder="Date"
+                                                        value={filterDate}
+                                                        onChange={(e) => setFilterDate(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-auto">
+                                                    <button
+                                                        className="btn btn-danger"
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFilterFirstName('');
+                                                            setFilterLastName('');
+                                                            setFilterStudentId('');
+                                                            setFilterDate('');
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-trash2-fill"></i> Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <DataTable
+                                            columns={columns}
+                                            data={filteredData}
+                                            pagination
+                                            responsive
+                                            highlightOnHover
+                                            striped
+                                            progressPending={isLoading}
+                                            progressComponent={<TableLoader />}
+                                            noDataComponent="No logs found"
+                                            customStyles={customTableStyles}
+                                            dense
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="col mb-3">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Last Name"
-                                value={filterLastName}
-                                onChange={e => setFilterLastName(e.target.value)}
-                            />
-                        </div>
-                        <div className="col mb-3">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Student ID"
-                                value={filterStudentId}
-                                onChange={e => setFilterStudentId(e.target.value)}
-                            />
-                        </div>
-                        <div className="col mb-3">
-                            <input
-                                className="form-control"
-                                type="date"
-                                placeholder="Date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                            />
-                        </div>
-                        <div className="col mb-3">
-                            <input
-                                className="form-control"
-                                type="time"
-                                placeholder="Time"
-                                value={selectedTime}
-                                onChange={(e) => setSelectedTime(e.target.value)}
-                            />
-                        </div>
-                        <button
-                            className="btn btn-danger col-sm-1 mb-3 me-3"
-                            type="button"
-                            onClick={() => {
-                                setFilterFirstName('');
-                                setFilterLastName('');
-                                setFilterStudentId('');
-                                setSelectedDate('');
-                                setSelectedTime('');
-                            }}
-                        >
-                            <i className="bi bi-trash2-fill"></i>
-                        </button>
                     </div>
-
-                    <DataTable
-                        className="border"
-                        columns={columns}
-                        data={filteredData}
-                        pagination
-                        responsive
-                        highlightOnHover
-                        striped
-                        noDataComponent="No logs found"
-                        customStyles={customStyles}
-                        dense
-                    />
-                </main>
+                </div>
             </div>
 
             {/* Delete Confirmation Modal */}
