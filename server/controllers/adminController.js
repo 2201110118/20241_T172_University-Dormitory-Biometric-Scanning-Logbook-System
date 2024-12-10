@@ -44,10 +44,26 @@ const postAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Create a new admin instance with plain password
+    // Check if username already exists
+    const existingAdmin = await Admin.findOne({ username });
+    if (existingAdmin) {
+      return res.status(409).json({
+        message: 'Username already exists'
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Create a new admin instance
     const admin = new Admin({
       username,
-      password // Store password without hashing
+      password, // Password will be hashed by pre-save middleware
+      isConfirmed: false // Set initial confirmation status
     });
 
     // Save the new admin record to the database
@@ -56,13 +72,25 @@ const postAdmin = async (req, res) => {
     // Remove password from response
     const adminResponse = {
       _id: savedAdmin._id,
-      username: savedAdmin.username
+      username: savedAdmin.username,
+      isConfirmed: savedAdmin.isConfirmed
     };
 
-    res.status(201).json(adminResponse);
+    res.status(201).json({
+      message: 'Admin account created successfully',
+      admin: adminResponse
+    });
   } catch (error) {
     console.error('Error adding admin:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    if (error.code === 11000) { // MongoDB duplicate key error
+      return res.status(409).json({
+        message: 'Username already exists'
+      });
+    }
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message
+    });
   }
 };
 
@@ -125,29 +153,65 @@ const deleteAdmin = async (req, res) => {
   }
 };
 
-// Add this new function
+// Add a new function to confirm admin registration
+const confirmAdmin = async (req, res) => {
+  try {
+    const adminId = req.params.id;
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    admin.isConfirmed = true;
+    await admin.save();
+
+    res.status(200).json({
+      message: 'Admin account confirmed successfully',
+      admin: {
+        _id: admin._id,
+        username: admin.username,
+        isConfirmed: admin.isConfirmed
+      }
+    });
+  } catch (error) {
+    console.error('Error confirming admin:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message
+    });
+  }
+};
+
+// Update the loginAdmin function to check confirmation status
 const loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find admin by username
+    // Find admin by username and include password
     const admin = await Admin.findOne({ username }).select('+password');
-
     if (!admin) {
-      return res.status(401).json({ message: 'Invalid username or password' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Simple password check
-    if (admin.password !== password) {
-      return res.status(401).json({ message: 'Invalid username or password' });
+    // Check if admin is confirmed
+    if (!admin.isConfirmed) {
+      return res.status(403).json({ message: 'Account pending confirmation' });
     }
 
-    // Send success response without token
+    // Verify password
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
     res.status(200).json({
+      success: true,
       message: 'Login successful',
       admin: {
         id: admin._id,
-        username: admin.username
+        username: admin.username,
+        isConfirmed: admin.isConfirmed
       }
     });
   } catch (error) {
@@ -169,12 +233,13 @@ const changePassword = async (req, res) => {
     }
 
     // Verify current password
-    if (admin.password !== currentPassword) {
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
       return res.status(401).json({ message: 'Current password is incorrect' });
     }
 
     // Update password
-    admin.password = newPassword;
+    admin.password = newPassword; // Will be hashed by pre-save middleware
     await admin.save();
 
     res.json({ message: 'Password updated successfully' });
@@ -184,4 +249,60 @@ const changePassword = async (req, res) => {
   }
 };
 
-export { getAdmins, getAdmin, postAdmin, updateAdmin, deleteAdmin, loginAdmin, changePassword };
+// Add the changeUsername controller
+const changeUsername = async (req, res) => {
+  try {
+    const { currentPassword, newUsername } = req.body;
+    const adminId = req.params.id;
+
+    // Find admin and include the password field
+    const admin = await Admin.findById(adminId).select('+password');
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Verify current password
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    // Check if new username already exists
+    const existingAdmin = await Admin.findOne({ username: newUsername });
+    if (existingAdmin) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    // Update username
+    admin.username = newUsername;
+    await admin.save();
+
+    res.json({ message: 'Username updated successfully' });
+  } catch (error) {
+    console.error('Error changing username:', error);
+    res.status(500).json({ message: 'Error updating username', error: error.message });
+  }
+};
+
+// Add the getAdminDetails controller
+const getAdminDetails = async (req, res) => {
+  try {
+    const adminId = req.params.id;
+    const admin = await Admin.findById(adminId);
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Return only necessary details
+    res.status(200).json({
+      id: admin._id,
+      username: admin.username
+    });
+  } catch (error) {
+    console.error('Error fetching admin details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export { getAdmins, getAdmin, postAdmin, updateAdmin, deleteAdmin, loginAdmin, changePassword, changeUsername, getAdminDetails, confirmAdmin };

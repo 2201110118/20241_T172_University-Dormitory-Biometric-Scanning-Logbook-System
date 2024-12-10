@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
+import TableLoader from '../components/TableLoader';
+import customTableStyles from '../components/TableStyles';
+import AdminHeader from '../components/AdminHeader';
 
 function AdminAccountManagement() {
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const initialTab = queryParams.get('tab') === 'unregistered' ? 'unregistered' : 'registered';
+    const [activeTab, setActiveTab] = useState(initialTab);
+
     const [students, setStudents] = useState([]);
     const [registeredStudents, setRegisteredStudents] = useState([]);
     const [unregisteredStudents, setUnregisteredStudents] = useState([]);
@@ -12,8 +20,7 @@ function AdminAccountManagement() {
         firstname: '',
         lastname: '',
         gmail: '',
-        roomnumber: '',
-        verificationDate: ''
+        date: ''
     });
 
     const [unregisteredInputs, setUnregisteredInputs] = useState({
@@ -21,7 +28,7 @@ function AdminAccountManagement() {
         firstname: '',
         lastname: '',
         gmail: '',
-        submissionDate: ''
+        date: ''
     });
 
     const [activeRegisteredFilters, setActiveRegisteredFilters] = useState({
@@ -29,8 +36,7 @@ function AdminAccountManagement() {
         firstname: '',
         lastname: '',
         gmail: '',
-        roomnumber: '',
-        verificationDate: ''
+        date: ''
     });
 
     const [activeUnregisteredFilters, setActiveUnregisteredFilters] = useState({
@@ -38,7 +44,7 @@ function AdminAccountManagement() {
         firstname: '',
         lastname: '',
         gmail: '',
-        submissionDate: ''
+        date: ''
     });
 
     const [showModal, setShowModal] = useState(false);
@@ -68,7 +74,10 @@ function AdminAccountManagement() {
     const [studentToConfirm, setStudentToConfirm] = useState(null);
     const [pendingChanges, setPendingChanges] = useState(null);
 
+    const [isLoading, setIsLoading] = useState(true);
+
     const fetchStudents = async () => {
+        setIsLoading(true);
         try {
             const response = await fetch('http://localhost:5000/api/student/');
             if (!response.ok) {
@@ -84,6 +93,8 @@ function AdminAccountManagement() {
             setUnregisteredStudents(data.filter(student => !student.registeredaccount));
         } catch (error) {
             console.error('Error fetching students:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -144,37 +155,55 @@ function AdminAccountManagement() {
         }));
     };
 
+    const getRegisteredStudents = () => {
+        return students.filter(student => student.registeredaccount);
+    };
+
+    const getUnregisteredStudents = () => {
+        return students.filter(student => !student.registeredaccount);
+    };
+
     const getFilteredRegisteredStudents = () => {
-        return registeredStudents.filter(student => {
-            const studentid = student.studentid?.toString() || '';
+        return getRegisteredStudents().filter(student => {
+            const studentid = student.studentid?.toString().toLowerCase() || '';
             const firstname = student.fullname?.firstname?.toLowerCase() || '';
             const lastname = student.fullname?.lastname?.toLowerCase() || '';
             const gmail = student.gmail?.toLowerCase() || '';
-            const roomnumber = student.roomnumber?.toString() || '';
             const verificationDate = student.accountStatus?.verificationDate || '';
 
-            return studentid.includes(activeRegisteredFilters.studentid.toLowerCase()) &&
+            const dateFilter = activeRegisteredFilters.date
+                ? new Date(verificationDate).toLocaleDateString('en-CA') === activeRegisteredFilters.date
+                : true;
+
+            return (
+                studentid.includes(activeRegisteredFilters.studentid.toLowerCase()) &&
                 firstname.includes(activeRegisteredFilters.firstname.toLowerCase()) &&
                 lastname.includes(activeRegisteredFilters.lastname.toLowerCase()) &&
                 gmail.includes(activeRegisteredFilters.gmail.toLowerCase()) &&
-                roomnumber.includes(activeRegisteredFilters.roomnumber.toLowerCase()) &&
-                verificationDate.toLowerCase().includes(activeRegisteredFilters.verificationDate.toLowerCase());
+                dateFilter
+            );
         });
     };
 
     const getFilteredUnregisteredStudents = () => {
-        return unregisteredStudents.filter(student => {
-            const studentid = student.studentid?.toString() || '';
+        return getUnregisteredStudents().filter(student => {
+            const studentid = student.studentid?.toString().toLowerCase() || '';
             const firstname = student.fullname?.firstname?.toLowerCase() || '';
             const lastname = student.fullname?.lastname?.toLowerCase() || '';
             const gmail = student.gmail?.toLowerCase() || '';
             const submissionDate = student.accountStatus?.submissionDate || '';
 
-            return studentid.includes(activeUnregisteredFilters.studentid.toLowerCase()) &&
+            const dateFilter = activeUnregisteredFilters.date
+                ? new Date(submissionDate).toLocaleDateString('en-CA') === activeUnregisteredFilters.date
+                : true;
+
+            return (
+                studentid.includes(activeUnregisteredFilters.studentid.toLowerCase()) &&
                 firstname.includes(activeUnregisteredFilters.firstname.toLowerCase()) &&
                 lastname.includes(activeUnregisteredFilters.lastname.toLowerCase()) &&
                 gmail.includes(activeUnregisteredFilters.gmail.toLowerCase()) &&
-                submissionDate.toLowerCase().includes(activeUnregisteredFilters.submissionDate.toLowerCase());
+                dateFilter
+            );
         });
     };
 
@@ -275,6 +304,7 @@ function AdminAccountManagement() {
 
     const handleConfirmStudent = async (student) => {
         setStudentToConfirm(student);
+        setPendingChanges(editForm);
         setShowConfirmRegistrationModal(true);
     };
 
@@ -306,7 +336,6 @@ function AdminAccountManagement() {
                         gmail: editForm['contacts.friend.gmail']
                     }
                 },
-                // Add confirmation data
                 registeredaccount: true,
                 accountStatus: {
                     isConfirmed: true,
@@ -314,7 +343,6 @@ function AdminAccountManagement() {
                 }
             };
 
-            // Remove any undefined values
             const cleanedData = JSON.parse(JSON.stringify(updatedData));
 
             const response = await fetch(`http://localhost:5000/api/student/${studentToConfirm.studentid}`, {
@@ -326,7 +354,8 @@ function AdminAccountManagement() {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to confirm student');
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to confirm student');
             }
 
             await fetchStudents();
@@ -343,113 +372,118 @@ function AdminAccountManagement() {
             name: 'Student ID',
             selector: row => row.studentid,
             sortable: true,
+            width: '12%',
         },
         {
-            name: 'First Name',
-            selector: row => row.fullname?.firstname,
+            name: 'Full Name',
+            selector: row => `${row.fullname?.firstname} ${row.fullname?.lastname}`,
             sortable: true,
-        },
-        {
-            name: 'Last Name',
-            selector: row => row.fullname?.lastname,
-            sortable: true,
+            width: '25%',
         },
         {
             name: 'Gmail',
             selector: row => row.gmail,
             sortable: true,
+            width: '25%',
         },
         {
             name: 'Room',
             selector: row => row.roomnumber || 'N/A',
             sortable: true,
+            width: '10%',
         },
         {
             name: 'Verification Date',
             selector: row => row.accountStatus?.verificationDate || 'N/A',
             sortable: true,
+            width: '15%',
         },
         {
             name: 'Actions',
             cell: row => (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                <div className="d-flex justify-content-end w-100">
                     <button
-                        className="btn btn-info btn-sm me-2"
+                        className="btn btn-info btn-sm me-1"
                         onClick={() => handleInfoClick(row)}
                     >
-                        <i className="bi bi-info-circle-fill text-black" />
+                        <i className="bi bi-info-circle-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
-                        className="btn btn-warning btn-sm me-2"
+                        className="btn btn-warning btn-sm me-1"
                         onClick={() => handleEditClick(row)}
                     >
-                        <i className="bi bi-pencil-fill text-black" />
+                        <i className="bi bi-pencil-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(row.studentid)}
                     >
-                        <i className="bi bi-trash2-fill" />
+                        <i className="bi bi-trash2-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                 </div>
             ),
-            width: '150px',
-            allowOverflow: true,
+            width: '13%',
+            right: true,
         },
     ];
 
     const unregisteredColumns = [
         {
-            name: 'Student ID',
+            name: 'ID',
             selector: row => row.studentid,
-            sortable: true,
+            sortable: false,
+            width: '12%',
         },
         {
-            name: 'First Name',
-            selector: row => row.fullname?.firstname,
-            sortable: true,
+            name: 'Full Name',
+            selector: row => `${row.fullname.firstname} ${row.fullname.lastname}`,
+            sortable: false,
+            width: '25%',
         },
         {
-            name: 'Last Name',
-            selector: row => row.fullname?.lastname,
-            sortable: true,
-        },
-        {
-            name: 'Gmail',
+            name: 'Gmail Account',
             selector: row => row.gmail,
-            sortable: true,
+            sortable: false,
+            width: '25%',
+        },
+        {
+            name: 'Room Number',
+            selector: row => row.roomnumber ? row.roomnumber : 'Not assigned',
+            sortable: false,
+            width: '15%',
         },
         {
             name: 'Submission Date',
             selector: row => row.accountStatus?.submissionDate || 'N/A',
-            sortable: true,
+            sortable: false,
+            width: '15%',
         },
         {
             name: 'Actions',
             cell: row => (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                <div className="d-flex justify-content-end w-100">
                     <button
-                        className="btn btn-info btn-sm me-2"
+                        className="btn btn-info btn-sm me-1"
                         onClick={() => handleInfoClick(row)}
                     >
-                        <i className="bi bi-info-circle-fill text-black" />
+                        <i className="bi bi-info-circle-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
-                        className="btn btn-warning btn-sm me-2"
+                        className="btn btn-warning btn-sm me-1"
                         onClick={() => handleEditClick(row)}
                     >
-                        <i className="bi bi-pencil-fill text-black" />
+                        <i className="bi bi-pencil-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(row.studentid)}
                     >
-                        <i className="bi bi-trash2-fill" />
+                        <i className="bi bi-trash2-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                 </div>
             ),
-            width: '150px',
-            allowOverflow: true,
+            width: '8%',
+            right: true,
         },
     ];
 
@@ -467,290 +501,355 @@ function AdminAccountManagement() {
 
     return (
         <>
-            <header className="navbar border-dark border-bottom shadow container-fluid bg-white"
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1030
-                }}>
-                <div className="container-fluid">
-                    <Link>
-                        <img
-                            src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png"
-                            alt="Buksu Logo"
-                            width="48"
-                            height="48"
-                        />
-                    </Link>
-                    <Link className="multiline-text ms-1 text-decoration-none fw-bold fs-5" style={{ lineHeight: "1.1rem" }}>
-                        <span style={{ color: "#0056b3" }}>Buksu</span>
-                        <br />
-                        <span style={{ color: "#003366" }}>Mahogany Dormitory</span>
-                    </Link>
-                    <ul className="ms-auto navbar-nav flex-row">
-                        <li className="nav-item">
-                            <Link
-                                className="btn btn-outline-dark text-center border-2"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    localStorage.removeItem('adminLoggedIn');
-                                    window.location.href = '/';
-                                }}
-                            >
-                                Sign out <i className="bi bi-door-open-fill" style={{ fontSize: "1rem" }} />
-                            </Link>
-                        </li>
-                    </ul>
+            <AdminHeader />
+            <div className="d-flex flex-column min-vh-100">
+                <div style={{ height: '64px' }}></div> {/* Spacer div to compensate for fixed header */}
+                <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
+                    <div className="d-flex" style={{ minHeight: 'calc(100vh - 64px)' }}>
+                        <nav className="sidebar bg-dark"
+                            style={{
+                                width: "250px",
+                                position: "fixed",
+                                top: "64px",
+                                bottom: 0,
+                                left: 0,
+                                overflowY: "auto",
+                                zIndex: 1020
+                            }}>
+                            <ul className="flex-column text-white text-decoration-none navbar-nav">
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Dashboard</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="#" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
+                                        <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6 text-start">Account Management</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Night Pass</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Logbook History</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Generate Report</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                    </Link>
+                                </li>
+                            </ul>
+                        </nav>
+
+                        <div className="flex-grow-1" style={{ marginLeft: "250px" }}>
+                            <div className="container-fluid p-4">
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h2 className="mb-0 fw-bold">Account Management</h2>
+                                    <div className="text-muted">
+                                        <i className="bi bi-clock me-2"></i>
+                                        {new Date().toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Summary Cards */}
+                                <div className="row g-4 mb-4">
+                                    <div className="col-xl-4 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Total Students</h6>
+                                                        <h3 className="mb-0">{students.length}</h3>
+                                                    </div>
+                                                    <div className="bg-primary bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-people text-primary" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="col-xl-4 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Registered Students</h6>
+                                                        <h3 className="mb-0">{getRegisteredStudents().length}</h3>
+                                                    </div>
+                                                    <div className="bg-success bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-person-check text-success" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="col-xl-4 col-md-6">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 className="text-muted mb-2">Pending Registrations</h6>
+                                                        <h3 className="mb-0">{getUnregisteredStudents().length}</h3>
+                                                    </div>
+                                                    <div className="bg-warning bg-opacity-10 p-3 rounded">
+                                                        <i className="bi bi-person-plus text-warning" style={{ fontSize: '1.5rem' }}></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tabs Navigation */}
+                                <div className="card border-0 shadow-sm mb-4">
+                                    <div className="card-header bg-transparent border-0">
+                                        <ul className="nav nav-tabs card-header-tabs">
+                                            <li className="nav-item">
+                                                <button
+                                                    className={`nav-link ${activeTab === 'registered' ? 'active text-primary' : 'text-secondary'}`}
+                                                    onClick={() => setActiveTab('registered')}
+                                                    style={{
+                                                        backgroundColor: activeTab === 'registered' ? '#e7f1ff' : ''
+                                                    }}
+                                                >
+                                                    <i className="bi bi-person-check me-2"></i>
+                                                    Registered Students
+                                                </button>
+                                            </li>
+                                            <li className="nav-item">
+                                                <button
+                                                    className={`nav-link ${activeTab === 'unregistered' ? 'active text-primary' : 'text-secondary'}`}
+                                                    onClick={() => setActiveTab('unregistered')}
+                                                    style={{
+                                                        backgroundColor: activeTab === 'unregistered' ? '#e7f1ff' : ''
+                                                    }}
+                                                >
+                                                    <i className="bi bi-person-plus me-2"></i>
+                                                    Registration Requests
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div className="card-body p-0">
+                                        {/* Registered Students Table */}
+                                        {activeTab === 'registered' && (
+                                            <>
+                                                {/* Filter Inputs */}
+                                                <div className="p-4 border-bottom">
+                                                    <div className="row g-3">
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="Student ID"
+                                                                name="studentid"
+                                                                value={registeredInputs.studentid}
+                                                                onChange={handleRegisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="First Name"
+                                                                name="firstname"
+                                                                value={registeredInputs.firstname}
+                                                                onChange={handleRegisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="Last Name"
+                                                                name="lastname"
+                                                                value={registeredInputs.lastname}
+                                                                onChange={handleRegisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="Gmail"
+                                                                name="gmail"
+                                                                value={registeredInputs.gmail}
+                                                                onChange={handleRegisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="date"
+                                                                placeholder="Verification Date"
+                                                                name="date"
+                                                                value={registeredInputs.date}
+                                                                onChange={handleRegisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col-auto">
+                                                            <button
+                                                                className="btn btn-danger"
+                                                                onClick={() => {
+                                                                    setRegisteredInputs({
+                                                                        studentid: '',
+                                                                        firstname: '',
+                                                                        lastname: '',
+                                                                        gmail: '',
+                                                                        date: ''
+                                                                    });
+                                                                    setActiveRegisteredFilters({
+                                                                        studentid: '',
+                                                                        firstname: '',
+                                                                        lastname: '',
+                                                                        gmail: '',
+                                                                        date: ''
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <i className="bi bi-trash2-fill"></i> Clear
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DataTable
+                                                    columns={registeredColumns}
+                                                    data={getFilteredRegisteredStudents()}
+                                                    customStyles={customTableStyles}
+                                                    pagination
+                                                    responsive
+                                                    highlightOnHover
+                                                    striped
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No registered students found"
+                                                    dense={false}
+                                                />
+                                            </>
+                                        )}
+
+                                        {/* Unregistered Students Table */}
+                                        {activeTab === 'unregistered' && (
+                                            <>
+                                                {/* Filter Inputs */}
+                                                <div className="p-4 border-bottom">
+                                                    <div className="row g-3">
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="Student ID"
+                                                                name="studentid"
+                                                                value={unregisteredInputs.studentid}
+                                                                onChange={handleUnregisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="First Name"
+                                                                name="firstname"
+                                                                value={unregisteredInputs.firstname}
+                                                                onChange={handleUnregisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="Last Name"
+                                                                name="lastname"
+                                                                value={unregisteredInputs.lastname}
+                                                                onChange={handleUnregisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="text"
+                                                                placeholder="Gmail"
+                                                                name="gmail"
+                                                                value={unregisteredInputs.gmail}
+                                                                onChange={handleUnregisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col">
+                                                            <input
+                                                                className="form-control"
+                                                                type="date"
+                                                                placeholder="Submission Date"
+                                                                name="date"
+                                                                value={unregisteredInputs.date}
+                                                                onChange={handleUnregisteredInputChange}
+                                                            />
+                                                        </div>
+                                                        <div className="col-auto">
+                                                            <button
+                                                                className="btn btn-danger"
+                                                                onClick={() => {
+                                                                    setUnregisteredInputs({
+                                                                        studentid: '',
+                                                                        firstname: '',
+                                                                        lastname: '',
+                                                                        gmail: '',
+                                                                        date: ''
+                                                                    });
+                                                                    setActiveUnregisteredFilters({
+                                                                        studentid: '',
+                                                                        firstname: '',
+                                                                        lastname: '',
+                                                                        gmail: '',
+                                                                        date: ''
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <i className="bi bi-trash2-fill"></i> Clear
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DataTable
+                                                    columns={unregisteredColumns}
+                                                    data={getFilteredUnregisteredStudents()}
+                                                    customStyles={customTableStyles}
+                                                    pagination
+                                                    responsive
+                                                    highlightOnHover
+                                                    striped
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No unregistered students found"
+                                                    dense={false}
+                                                />
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </header>
-
-            <div className="container-fluid d-flex row" style={{ marginTop: '64px' }}>
-                <nav className="sidebar bg-dark fixed-top"
-                    style={{
-                        width: "250px",
-                        height: "100vh",
-                        marginTop: "64px",
-                        zIndex: 1020
-                    }}>
-                    <ul className="flex-column text-white text-decoration-none navbar-nav">
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Dashboard</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="#" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
-                                <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6 text-start">Account Management</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminMessageRequest" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Message Request</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Logbook History</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Report Logs</span>
-                            </Link>
-                        </li>
-                        <li className="nav-item border-bottom bordor-white">
-                            <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                <span className="ms-2 fw-bold fs-6">Setting</span>
-                            </Link>
-                        </li>
-                    </ul>
-                </nav>
-
-                <main className="container-fluid px-4"
-                    style={{
-                        flex: 1,
-                        marginLeft: "275px",
-                        marginTop: "20px"
-                    }}>
-                    <h2 className="my-4">Account Management</h2>
-                    <div className="border-3 border-bottom border-black mb-4"></div>
-                    <h3 className="my-4 fw-normal">Registered Student Accounts</h3>
-                    <div className="row mb-3">
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Student ID"
-                                name="studentid"
-                                value={registeredInputs.studentid}
-                                onChange={handleRegisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="First Name"
-                                name="firstname"
-                                value={registeredInputs.firstname}
-                                onChange={handleRegisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Last Name"
-                                name="lastname"
-                                value={registeredInputs.lastname}
-                                onChange={handleRegisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Gmail"
-                                name="gmail"
-                                value={registeredInputs.gmail}
-                                onChange={handleRegisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Room Number"
-                                name="roomnumber"
-                                value={registeredInputs.roomnumber}
-                                onChange={handleRegisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Verification Date"
-                                name="verificationDate"
-                                value={registeredInputs.verificationDate}
-                                onChange={handleRegisteredInputChange}
-                            />
-                        </div>
-                        <div className="col-auto">
-                            <button
-                                className="btn btn-danger"
-                                onClick={() => {
-                                    setRegisteredInputs({
-                                        studentid: '',
-                                        firstname: '',
-                                        lastname: '',
-                                        gmail: '',
-                                        roomnumber: '',
-                                        verificationDate: ''
-                                    });
-                                    setActiveRegisteredFilters({
-                                        studentid: '',
-                                        firstname: '',
-                                        lastname: '',
-                                        gmail: '',
-                                        roomnumber: '',
-                                        verificationDate: ''
-                                    });
-                                }}
-                            >
-                                <i className="bi bi-trash2-fill"></i> Clear
-                            </button>
-                        </div>
-                    </div>
-                    <DataTable
-                        className="border"
-                        columns={registeredColumns}
-                        data={getFilteredRegisteredStudents()}
-                        pagination
-                        responsive
-                        highlightOnHover
-                        striped
-                        noDataComponent="No registered students found"
-                        dense={false}
-                    />
-
-                    <div className="border-bottom border-3 border-black mt-3" />
-                    <h3 className="my-4 fw-normal">Unregistered Student Accounts</h3>
-                    <div className="row mb-3">
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Student ID"
-                                name="studentid"
-                                value={unregisteredInputs.studentid}
-                                onChange={handleUnregisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="First Name"
-                                name="firstname"
-                                value={unregisteredInputs.firstname}
-                                onChange={handleUnregisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Last Name"
-                                name="lastname"
-                                value={unregisteredInputs.lastname}
-                                onChange={handleUnregisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Gmail"
-                                name="gmail"
-                                value={unregisteredInputs.gmail}
-                                onChange={handleUnregisteredInputChange}
-                            />
-                        </div>
-                        <div className="col">
-                            <input
-                                className="form-control"
-                                type="text"
-                                placeholder="Submission Date"
-                                name="submissionDate"
-                                value={unregisteredInputs.submissionDate}
-                                onChange={handleUnregisteredInputChange}
-                            />
-                        </div>
-                        <div className="col-auto">
-                            <button
-                                className="btn btn-danger"
-                                onClick={() => {
-                                    setUnregisteredInputs({
-                                        studentid: '',
-                                        firstname: '',
-                                        lastname: '',
-                                        gmail: '',
-                                        submissionDate: ''
-                                    });
-                                    setActiveUnregisteredFilters({
-                                        studentid: '',
-                                        firstname: '',
-                                        lastname: '',
-                                        gmail: '',
-                                        submissionDate: ''
-                                    });
-                                }}
-                            >
-                                <i className="bi bi-trash2-fill"></i> Clear
-                            </button>
-                        </div>
-                    </div>
-                    <DataTable
-                        className="border mb-4"
-                        columns={unregisteredColumns}
-                        data={getFilteredUnregisteredStudents()}
-                        pagination
-                        responsive
-                        highlightOnHover
-                        striped
-                        noDataComponent="No unregistered students found"
-                        dense={false}
-                    />
-                </main>
             </div>
 
             {showModal && selectedStudent && (
