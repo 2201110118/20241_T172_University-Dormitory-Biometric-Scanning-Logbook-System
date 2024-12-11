@@ -3,7 +3,7 @@ import Logs from '../models/log.js'
 
 const getLogs = async (req, res) => {
     try {
-        const logs = await Logs.find().sort({ 'timestamp.date': -1, 'timestamp.time': -1 });
+        const logs = await Logs.find({ archive: { $ne: true } }).sort({ 'timestamp.date': -1, 'timestamp.time': -1 });
 
         // Manually populate student data using studentid
         const populatedLogs = await Promise.all(logs.map(async (log) => {
@@ -45,7 +45,7 @@ const getLog = async (req, res) => {
 
 const deleteLog = async (req, res) => {
     try {
-        const logid = req.params.id;
+        const logid = req.params.logid;
         const log = await Logs.findOneAndDelete({ logid: logid });
 
         if (!log) {
@@ -59,4 +59,24 @@ const deleteLog = async (req, res) => {
     }
 };
 
-export { getLogs, getLog, deleteLog };
+const updateLog = async (req, res) => {
+    try {
+        const logid = req.params.logid;
+        const log = await Logs.findOneAndUpdate(
+            { logid: logid },
+            { $set: req.body },
+            { new: true }
+        );
+
+        if (!log) {
+            return res.status(404).json({ message: "Log not found" });
+        }
+
+        res.status(200).json(log);
+    } catch (error) {
+        console.error('Error updating log:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export { getLogs, getLog, deleteLog, updateLog };

@@ -4,11 +4,11 @@ const formatDate = (date) => {
     if (!date) return null;
     const dateObj = new Date(date);
 
-    return dateObj.toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    const year = dateObj.getUTCFullYear();
+
+    return `${month}/${day}/${year}`;
 };
 
 const messageModel = mongoose.model('Messages', new mongoose.Schema({

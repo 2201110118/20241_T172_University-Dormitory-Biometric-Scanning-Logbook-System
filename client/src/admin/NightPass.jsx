@@ -41,13 +41,12 @@ function AdminNightPass() {
             const response = await fetch("http://localhost:5000/api/message");
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
-            console.log("Fetched messages:", data);
-            const sortedData = data.sort((a, b) =>
-                new Date(b.requestStatus.requestDate) - new Date(a.requestStatus.requestDate)
-            );
+            // Filter out archived messages
+            const activeMessages = data.filter(message => !message.archive);
+            const sortedData = activeMessages.sort((a, b) => new Date(b.requestStatus.requestDate) - new Date(a.requestStatus.requestDate));
             setMessages(sortedData);
         } catch (error) {
-            console.error('Error fetching messages:', error);
+            console.error(`Error fetching messages: ${error}`);
         } finally {
             setIsLoading(false);
         }
@@ -171,14 +170,23 @@ function AdminNightPass() {
     const handleDelete = async () => {
         try {
             const response = await fetch(`http://localhost:5000/api/message/${messageToDelete}`, {
-                method: 'DELETE',
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ archive: true })
             });
 
-            if (!response.ok) throw new Error('Failed to delete message');
+            if (!response.ok) {
+                console.error('Archive response not OK:', response);
+                throw new Error('Failed to archive message');
+            }
+
+            console.log('Message successfully archived, fetching updated messages...');
             await fetchMessages();
             setShowDeleteModal(false);
         } catch (error) {
-            console.error('Error deleting message:', error);
+            console.error('Error in handleArchive:', error);
         }
     };
 
@@ -262,7 +270,7 @@ function AdminNightPass() {
                             setShowDeleteModal(true);
                         }}
                     >
-                        <i className="bi bi-trash2-fill text-white" style={{ fontSize: "0.875rem" }} />
+                        <i className="bi bi-archive-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                 </div>
             ),
@@ -328,7 +336,7 @@ function AdminNightPass() {
                             setShowConfirmModal(true);
                         }}
                     >
-                        <i className="bi bi-check-square-fill text-white" style={{ fontSize: "0.875rem" }} />
+                        <i className="bi bi-check-circle-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
@@ -337,7 +345,7 @@ function AdminNightPass() {
                             setShowDeleteModal(true);
                         }}
                     >
-                        <i className="bi bi-trash2-fill text-white" style={{ fontSize: "0.875rem" }} />
+                        <i className="bi bi-archive-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                 </div>
             ),
@@ -718,31 +726,44 @@ function AdminNightPass() {
                 </>
             )}
 
-            {/* Delete Modal */}
+            {/* Delete/Archive Confirmation Modal */}
             {showDeleteModal && (
                 <>
-                    <div className="modal fade show" style={{ display: 'block' }}>
+                    <div className={`modal fade show`}
+                        style={{ display: 'block' }}
+                        tabIndex="-1"
+                        role="dialog"
+                        aria-labelledby="deleteModalLabel"
+                        aria-hidden="true">
                         <div className="modal-dialog modal-dialog-centered">
                             <div className="modal-content">
                                 <div className="modal-header">
-                                    <h5 className="modal-title">Delete Request</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowDeleteModal(false)} />
+                                    <h5 className="modal-title" id="deleteModalLabel">Confirm Archive</h5>
+                                    <button type="button"
+                                        className="btn-close"
+                                        onClick={() => setShowDeleteModal(false)}
+                                        aria-label="Close">
+                                    </button>
                                 </div>
                                 <div className="modal-body">
-                                    Are you sure you want to delete this request?
+                                    Are you sure you want to archive this night pass request? This will hide it from the list.
                                 </div>
                                 <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
+                                    <button type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowDeleteModal(false)}>
                                         Cancel
                                     </button>
-                                    <button type="button" className="btn btn-danger" onClick={handleDelete}>
-                                        Delete
+                                    <button type="button"
+                                        className="btn btn-danger"
+                                        onClick={handleDelete}>
+                                        Archive
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div className="modal-backdrop fade show" />
+                    <div className="modal-backdrop fade show"></div>
                 </>
             )}
 

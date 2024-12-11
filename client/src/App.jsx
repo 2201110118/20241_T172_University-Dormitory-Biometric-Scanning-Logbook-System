@@ -1,59 +1,83 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+
+// Admin Components
+import AdminDashboard from './admin/Dashboard';
+import AdminLogin from './admin/Login';
+import AdminSignup from './admin/Signup';
 import AdminAccountManagement from './admin/AccountManagement';
 import AdminNightPass from './admin/NightPass';
 import AdminLogbookHistory from './admin/LogbookHistory';
-import AdminDashboard from './admin/Dashboard';
-import AdminLogin from './admin/Login';
-import ProtectedRoute from './components/ProtectedRoute';
 import AdminSettings from './admin/Settings';
 import AccountSettings from './admin/AccountSettings';
-import AdminSignup from './admin/Signup';
-import AdminProtectedRoute from './components/AdminProtectedRoute';
+
+// Student Components
+import StudentDashboard from './student/Dashboard';
+import StudentLogin from './student/Login';
+import StudentSignup from './student/Signup';
+
+// Other Components
+import Homepage from './Homepage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/admin/login" replace />} />
+        {/* Homepage route */}
+        <Route path="/" element={<Homepage />} />
 
-        <Route path="/AdminLogbookHistory" element={
-          <ProtectedRoute>
-            <AdminLogbookHistory />
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/signup" element={<AdminSignup />} />
+
+        <Route path="/AdminDashboard" element={
+          <ProtectedRoute userType="admin" requireAuth={true}>
+            <AdminDashboard />
           </ProtectedRoute>
         } />
         <Route path="/AdminAccountManagement" element={
-          <ProtectedRoute>
+          <ProtectedRoute userType="admin" requireAuth={true}>
             <AdminAccountManagement />
           </ProtectedRoute>
         } />
         <Route path="/AdminNightPass" element={
-          <ProtectedRoute>
+          <ProtectedRoute userType="admin" requireAuth={true}>
             <AdminNightPass />
           </ProtectedRoute>
         } />
-        <Route path="/AdminDashboard" element={
-          <ProtectedRoute>
-            <AdminDashboard />
+        <Route path="/AdminLogbookHistory" element={
+          <ProtectedRoute userType="admin" requireAuth={true}>
+            <AdminLogbookHistory />
           </ProtectedRoute>
         } />
         <Route path="/AdminSettings" element={
-          <ProtectedRoute>
+          <ProtectedRoute userType="admin" requireAuth={true}>
             <AdminSettings />
           </ProtectedRoute>
         } />
-        <Route path="/AdminAccountSettings" element={
-          <ProtectedRoute>
+        <Route path="/admin/account-settings" element={
+          <ProtectedRoute allowedRole="admin">
             <AccountSettings />
           </ProtectedRoute>
         } />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/signup" element={<AdminSignup />} />
 
-        <Route path="*" element={<Navigate to="/admin/login" replace />} />
+        {/* Student routes */}
+        <Route path="/student/login" element={<StudentLogin />} />
+        <Route path="/student/signup" element={<StudentSignup />} />
+
+        <Route path="/StudentDashboard" element={
+          <ProtectedRoute userType="student" requireAuth={true}>
+            <StudentDashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Catch all other routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

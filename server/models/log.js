@@ -4,21 +4,15 @@ const formatDate = (date) => {
     if (!date) return null;
     const dateObj = new Date(date);
 
-    const dateFormat = dateObj.toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-
-    const timeFormat = dateObj.toLocaleString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    const year = dateObj.getUTCFullYear();
+    const hours = String(dateObj.getUTCHours()).padStart(2, '0');
+    const minutes = String(dateObj.getUTCMinutes()).padStart(2, '0');
 
     return {
-        date: dateFormat,
-        time: timeFormat
+        date: `${month}/${day}/${year}`,
+        time: `${hours}:${minutes}`
     };
 };
 

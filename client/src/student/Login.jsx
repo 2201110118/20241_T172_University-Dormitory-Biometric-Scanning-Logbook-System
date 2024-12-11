@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Modal } from 'bootstrap';
 import ReCAPTCHA from "react-google-recaptcha";
+import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from "jwt-decode";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
 import logo from '../assets/logo.png';
 import logotitle from '../assets/logotitle.png';
-import './AdminAuth.css';
+import './StudentAuth.css';
 
-function AdminLogin() {
+function StudentLogin() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        username: '',
+        studentid: '',
         password: ''
     });
     const [error, setError] = useState('');
@@ -19,14 +21,21 @@ function AdminLogin() {
     const [isLoading, setIsLoading] = useState(false);
     const [errorModal, setErrorModal] = useState(null);
     const [captchaToken, setCaptchaToken] = useState(null);
+    const [contentLoaded, setContentLoaded] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
-        setIsVisible(true);
-        // Initialize modal
+        // Set a small delay to ensure DOM is ready
+        const timer = setTimeout(() => {
+            setIsVisible(true);
+            setContentLoaded(true);
+        }, 100);
+
         const modal = new Modal(document.getElementById('errorModal'));
         setErrorModal(modal);
+
         return () => {
+            clearTimeout(timer);
             setIsVisible(false);
             if (errorModal) {
                 errorModal.dispose();
@@ -45,6 +54,83 @@ function AdminLogin() {
         setCaptchaToken(token);
     };
 
+    const handleGoogleSuccess = async (credentialResponse) => {
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const decoded = jwtDecode(credentialResponse.credential);
+
+            // First, check if a student with this email exists
+            const checkResponse = await fetch('http://localhost:5000/api/student/check-google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    gmail: decoded.email
+                })
+            });
+
+            const checkData = await checkResponse.json();
+
+            if (checkData.exists) {
+                // If student exists, attempt to login
+                const loginResponse = await fetch('http://localhost:5000/api/login/student/google', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        googleId: decoded.sub,
+                        gmail: decoded.email
+                    }),
+                    credentials: 'include'
+                });
+
+                const loginData = await loginResponse.json();
+
+                if (!loginResponse.ok) {
+                    if (loginResponse.status === 403 && !loginData.isConfirmed) {
+                        document.getElementById('errorModalTitle').textContent = 'Account Not Confirmed';
+                        document.getElementById('errorModalBody').textContent = 'Your account is pending confirmation. Please wait for admin approval.';
+                        errorModal.show();
+                    } else {
+                        setError(loginData.message || 'Login failed');
+                    }
+                    setIsLoading(false);
+                    return;
+                }
+
+                localStorage.setItem('studentLoggedIn', 'true');
+                localStorage.setItem('student', JSON.stringify(loginData.student));
+                navigate('/StudentDashboard');
+            } else {
+                // If student doesn't exist, redirect to signup with Google data
+                navigate('/student/signup', {
+                    state: {
+                        googleData: {
+                            googleId: decoded.sub,
+                            firstname: decoded.given_name,
+                            lastname: decoded.family_name,
+                            gmail: decoded.email
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+            setError('Unable to process Google login. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleError = () => {
+        console.error('Google login failed');
+        setError('Google login failed. Please try again.');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -57,7 +143,7 @@ function AdminLogin() {
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/login/admin', {
+            const response = await fetch('http://localhost:5000/api/login/student', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,14 +158,20 @@ function AdminLogin() {
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.message || 'Login failed');
+                if (response.status === 403 && data.isConfirmed === false) {
+                    document.getElementById('errorModalTitle').textContent = 'Account Not Confirmed';
+                    document.getElementById('errorModalBody').textContent = 'Your account is pending confirmation. Please wait for admin approval.';
+                    errorModal.show();
+                } else {
+                    setError(data.message || 'Login failed');
+                }
                 setIsLoading(false);
                 return;
             }
 
-            localStorage.setItem('adminLoggedIn', 'true');
-            localStorage.setItem('admin', JSON.stringify(data.admin));
-            navigate('/AdminDashboard');
+            localStorage.setItem('studentLoggedIn', 'true');
+            localStorage.setItem('student', JSON.stringify(data.student));
+            navigate('/StudentDashboard');
 
         } catch (error) {
             console.error('Login error:', error);
@@ -92,7 +184,7 @@ function AdminLogin() {
     return (
         <>
             {/* Error Modal */}
-            <div className="modal fade admin-modal" id="errorModal" tabIndex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+            <div className="modal fade" id="errorModal" tabIndex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content">
                         <div className="modal-header">
@@ -101,7 +193,7 @@ function AdminLogin() {
                         </div>
                         <div className="modal-body">
                             <div className="text-center">
-                                <i className="bi bi-exclamation-circle text-warning error-icon" style={{ fontSize: '3rem' }}></i>
+                                <i className="bi bi-exclamation-circle text-warning" style={{ fontSize: '3rem' }}></i>
                                 <p className="mt-3" id="errorModalBody">Error message here</p>
                             </div>
                         </div>
@@ -153,7 +245,7 @@ function AdminLogin() {
                                 alt="Logo Title"
                                 style={{
                                     maxWidth: '200px',
-                                    height: 'auto'
+                                    height: 'auto',
                                 }}
                             />
                             <img
@@ -169,8 +261,6 @@ function AdminLogin() {
 
                     {/* Right Side - Form */}
                     <div>
-                        <i className="bi bi-shield-lock-fill mb-3" style={{ fontSize: '3rem' }}></i>
-                        <h4 className="mb-4">Admin Login</h4>
                         {error && (
                             <div
                                 className="alert alert-danger py-1 px-2 d-flex align-items-center"
@@ -191,14 +281,43 @@ function AdminLogin() {
                             </div>
                         )}
 
+                        <i className="bi bi-person-circle mb-3" style={{ fontSize: '3rem' }}></i>
+                        <h4 className="mb-4">Student Login</h4>
+
+                        {/* Google Sign-In Button */}
+                        <div className="w-100 mb-4">
+                            <div className="d-flex align-items-center justify-content-center mb-3">
+                                <hr className="flex-grow-1 me-3" />
+                                <span className="text-muted">Sign in with</span>
+                                <hr className="flex-grow-1 ms-3" />
+                            </div>
+                            <div className="d-flex justify-content-center">
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={handleGoogleError}
+                                    useOneTap
+                                    shape="rectangular"
+                                    theme="filled_blue"
+                                    size="large"
+                                    width="250px"
+                                />
+                            </div>
+                            <div className="d-flex align-items-center justify-content-center my-3">
+                                <hr className="flex-grow-1 me-3" />
+                                <span className="text-muted">or</span>
+                                <hr className="flex-grow-1 ms-3" />
+                            </div>
+                        </div>
+
+                        {/* Regular Login Form */}
                         <form className="w-100" onSubmit={handleSubmit}>
                             <div className="mb-3">
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder="Username"
-                                    name="username"
-                                    value={formData.username}
+                                    placeholder="Student ID"
+                                    name="studentid"
+                                    value={formData.studentid}
                                     onChange={handleChange}
                                     required
                                 />
@@ -246,7 +365,7 @@ function AdminLogin() {
                             </div>
                             <div className="text-center mt-3">
                                 <span className="text-muted">Don't have an account? </span>
-                                <Link to="/admin/signup" className="text-primary text-decoration-none">
+                                <Link to="/student/signup" className="text-primary text-decoration-none">
                                     Sign up
                                 </Link>
                             </div>
@@ -264,5 +383,4 @@ function AdminLogin() {
     );
 }
 
-export default AdminLogin;
-
+export default StudentLogin; 

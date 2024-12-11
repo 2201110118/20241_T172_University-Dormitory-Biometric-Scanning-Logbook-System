@@ -1,0 +1,329 @@
+/* Base styles */
+html,
+body {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    position: relative;
+}
+
+/* Login page container */
+.login-page {
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-x: hidden;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    margin: 0;
+    padding: 0;
+}
+
+.login-page.visible {
+    opacity: 1;
+}
+
+/* Login form container - Different size for students */
+.login-container {
+    width: 1000px;
+    /* Smaller width for student container */
+    min-height: 600px;
+    /* Smaller height for student container */
+    display: flex;
+    opacity: 0;
+    transform: scale(0.98);
+    transition: all 0.3s ease;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.login-container.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Left side - Image container */
+.login-container>div:first-child {
+    width: 500px;
+    /* Adjusted for student container */
+    min-height: 600px;
+    /* Adjusted for student container */
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Right side - Form container */
+.login-container>div:last-child {
+    width: 500px;
+    /* Adjusted for student container */
+    min-height: 600px;
+    /* Adjusted for student container */
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+}
+
+/* Rest of the styles remain the same as Login.css */
+/* ... copy the remaining styles from Login.css ... */
+
+/* Add these animation styles */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Add animation to form elements */
+.form-control {
+    animation: slideIn 0.3s ease-out;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    transition: all 0.2s ease-in-out;
+}
+
+/* Button hover animation */
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Progress steps animation */
+.progress-step {
+    transition: all 0.3s ease;
+}
+
+.progress-step.active {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Alert animation */
+.alert {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Form container animation */
+.login-container>div:last-child {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Google button animation */
+.google-btn {
+    transition: all 0.3s ease;
+}
+
+.google-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Input group animation */
+.input-group {
+    transition: all 0.3s ease;
+}
+
+.input-group:focus-within {
+    transform: translateY(-1px);
+}
+
+/* ReCAPTCHA container animation */
+.recaptcha-container {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Error message animation */
+.error-message {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Success message animation */
+.success-message {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Modal animation */
+.modal.show {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+/* Loading overlay animation */
+.loading-overlay {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Step transition animation */
+.form-step {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Progress bar animation */
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Link hover animation */
+a {
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+/* Icon animation */
+.bi {
+    transition: all 0.2s ease;
+}
+
+.btn:hover .bi {
+    transform: translateY(-1px);
+}
+
+/* Progress Steps Animation */
+@keyframes stepFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes checkmarkAppear {
+    from {
+        opacity: 0;
+        transform: scale(0) rotate(-45deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+    }
+}
+
+@keyframes progressLine {
+    from {
+        width: 0;
+        opacity: 0;
+    }
+
+    to {
+        width: 30px;
+        opacity: 1;
+    }
+}
+
+/* Step circle styles */
+.rounded-circle {
+    transition: all 0.3s ease;
+    animation: stepFadeIn 0.5s ease-out;
+}
+
+/* Active step styles */
+.bg-primary.text-white {
+    animation: stepFadeIn 0.5s ease-out;
+}
+
+/* Completed step styles */
+.bg-success.text-white {
+    animation: stepFadeIn 0.5s ease-out;
+}
+
+/* Checkmark icon animation */
+.bi-check {
+    animation: checkmarkAppear 0.3s ease-out;
+}
+
+/* Progress line animation */
+.mx-2.bg-light,
+.mx-2.bg-success {
+    animation: progressLine 0.5s ease-out;
+}
+
+/* Step number animation */
+.rounded-circle:not(.bg-success):not(.bg-primary) {
+    transition: all 0.3s ease;
+}
+
+/* Step hover effect */
+.rounded-circle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Active step glow effect */
+.bg-primary.text-white {
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.3);
+}
+
+/* Completed step glow effect */
+.bg-success.text-white {
+    box-shadow: 0 0 10px rgba(25, 135, 84, 0.3);
+}
+
+/* Progress line transition */
+.mx-2 {
+    transition: background-color 0.3s ease;
+}

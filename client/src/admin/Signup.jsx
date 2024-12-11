@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Modal } from 'bootstrap';
+import ReCAPTCHA from "react-google-recaptcha";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
-import logo from '../assets/logo.png';
 import logotitle from '../assets/logotitle.png';
+import logo from '../assets/logo.png';
+import './AdminAuth.css';
 
 function AdminSignup() {
     const navigate = useNavigate();
@@ -16,17 +18,19 @@ function AdminSignup() {
     const [error, setError] = useState('');
     const [isVisible, setIsVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [successModal, setSuccessModal] = useState(null);
+    const [errorModal, setErrorModal] = useState(null);
+    const [captchaToken, setCaptchaToken] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
         setIsVisible(true);
-        // Initialize modal
-        const modal = new Modal(document.getElementById('successModal'));
-        setSuccessModal(modal);
+        const modal = new Modal(document.getElementById('errorModal'));
+        setErrorModal(modal);
         return () => {
             setIsVisible(false);
-            if (successModal) {
-                successModal.dispose();
+            if (errorModal) {
+                errorModal.dispose();
             }
         };
     }, []);
@@ -38,33 +42,36 @@ function AdminSignup() {
         });
     };
 
+    const handleCaptchaChange = (token) => {
+        setCaptchaToken(token);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
-        // Password validation
+        if (!captchaToken) {
+            setError('Please complete the reCAPTCHA verification');
+            setIsLoading(false);
+            return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
             setIsLoading(false);
             return;
         }
 
-        if (formData.password.length < 6) {
-            setError('Password must be at least 6 characters long');
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const response = await fetch('http://localhost:5000/api/admin/signup', {
+            const response = await fetch('http://localhost:5000/api/signup/admin', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    username: formData.username,
-                    password: formData.password
+                    ...formData,
+                    captchaToken
                 }),
                 credentials: 'include'
             });
@@ -72,30 +79,15 @@ function AdminSignup() {
             const data = await response.json();
 
             if (!response.ok) {
-                if (response.status === 400) {
-                    setError(data.message || 'Validation error');
-                } else if (response.status === 409) {
-                    setError('Username already exists');
-                } else {
-                    setError('Registration failed');
-                }
+                setError(data.message || 'Signup failed');
                 setIsLoading(false);
                 return;
             }
 
-            // Log success in console
-            console.log('Account created successfully!');
-
-            // Show success modal
-            successModal.show();
-
-            // Redirect to login page after modal is closed
-            document.getElementById('successModal').addEventListener('hidden.bs.modal', () => {
-                navigate('/admin/login');
-            }, { once: true });
+            navigate('/admin/login');
 
         } catch (error) {
-            console.error('Registration error:', error);
+            console.error('Signup error:', error);
             setError('Unable to connect to the server. Please try again.');
         } finally {
             setIsLoading(false);
@@ -104,22 +96,22 @@ function AdminSignup() {
 
     return (
         <>
-            {/* Success Modal */}
-            <div className="modal fade" id="successModal" tabIndex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+            {/* Error Modal */}
+            <div className="modal fade" id="errorModal" tabIndex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content">
                         <div className="modal-header">
-                            <h5 className="modal-title" id="successModalLabel">Success</h5>
+                            <h5 className="modal-title" id="errorModalTitle">Error</h5>
                             <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div className="modal-body">
                             <div className="text-center">
-                                <i className="bi bi-check-circle text-success" style={{ fontSize: '3rem' }}></i>
-                                <p className="mt-3">Account created successfully!</p>
+                                <i className="bi bi-exclamation-circle text-warning" style={{ fontSize: '3rem' }}></i>
+                                <p className="mt-3" id="errorModalBody">Error message here</p>
                             </div>
                         </div>
                         <div className="modal-footer">
-                            <button type="button" className="btn btn-primary" data-bs-dismiss="modal">Continue to Login</button>
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         </div>
                     </div>
                 </div>
@@ -132,14 +124,14 @@ function AdminSignup() {
                         <div className="spinner-border text-dark" role="status" style={{ width: '3rem', height: '3rem' }}>
                             <span className="visually-hidden">Loading...</span>
                         </div>
-                        <div className="mt-3 text-dark">Creating account...</div>
+                        <div className="mt-3 text-dark">Creating your account...</div>
                     </div>
                 </div>
             )}
 
             {/* Main Content */}
             <div
-                className={`login-page min-vh-100 w-100 d-flex justify-content-center align-items-center ${isVisible ? 'visible' : ''}`}
+                className={`login-page ${isVisible ? 'visible' : ''}`}
                 style={{
                     backgroundImage: `url(${wallpaper})`,
                     backgroundSize: 'cover',
@@ -147,16 +139,11 @@ function AdminSignup() {
                     backgroundRepeat: 'no-repeat'
                 }}
             >
-                <div className={`login-container shadow-lg d-flex rounded overflow-hidden ${isVisible ? 'visible' : ''}`}>
+                <div className={`login-container ${isVisible ? 'visible' : ''}`}>
+                    {/* Left Side - Image */}
                     <div
-                        className="position-relative"
                         style={{
-                            width: '400px',
-                            height: '500px',
-                            backgroundImage: `url(${wallpaper2})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat'
+                            backgroundImage: `url(${wallpaper2})`
                         }}
                     >
                         <div
@@ -171,7 +158,7 @@ function AdminSignup() {
                                 alt="Logo Title"
                                 style={{
                                     maxWidth: '200px',
-                                    height: 'auto',
+                                    height: 'auto'
                                 }}
                             />
                             <img
@@ -184,17 +171,31 @@ function AdminSignup() {
                             />
                         </div>
                     </div>
-                    <div
-                        className="bg-white d-flex flex-column justify-content-center align-items-center p-5"
-                        style={{
-                            width: '400px',
-                            height: '500px',
-                            padding: '30px'
-                        }}
-                    >
-                        <i className="bi bi-person-plus-fill mb-3" style={{ fontSize: '3rem' }}></i>
+
+                    {/* Right Side - Form */}
+                    <div>
+                        <i className="bi bi-shield-lock-fill mb-3" style={{ fontSize: '3rem' }}></i>
                         <h4 className="mb-4">Admin Registration</h4>
-                        {error && <div className="alert alert-danger py-2">{error}</div>}
+                        {error && (
+                            <div
+                                className="alert alert-danger py-1 px-2 d-flex align-items-center"
+                                style={{
+                                    fontSize: '0.875rem',
+                                    position: 'absolute',
+                                    top: '1rem',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    maxWidth: '90%',
+                                    zIndex: 1000,
+                                    borderRadius: '4px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                            >
+                                <i className="bi bi-exclamation-circle-fill me-2"></i>
+                                {error}
+                            </div>
+                        )}
+
                         <form className="w-100" onSubmit={handleSubmit}>
                             <div className="mb-3">
                                 <input
@@ -207,26 +208,62 @@ function AdminSignup() {
                                     required
                                 />
                             </div>
-                            <div className="mb-3">
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    placeholder="Password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                />
+                            <div className="mb-3 position-relative">
+                                <div className="input-group">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="form-control"
+                                        placeholder="Password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        required
+                                        minLength="6"
+                                    />
+                                    <button
+                                        className="btn btn-outline-secondary"
+                                        type="button"
+                                        onMouseDown={() => setShowPassword(true)}
+                                        onMouseUp={() => setShowPassword(false)}
+                                        onMouseLeave={() => setShowPassword(false)}
+                                        onTouchStart={() => setShowPassword(true)}
+                                        onTouchEnd={() => setShowPassword(false)}
+                                        tabIndex="-1"
+                                    >
+                                        <i className={`bi bi-eye${showPassword ? '-slash' : ''}-fill`}></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div className="mb-4">
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    placeholder="Confirm Password"
-                                    name="confirmPassword"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    required
+                            <div className="mb-4 position-relative">
+                                <div className="input-group">
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        className="form-control"
+                                        placeholder="Confirm Password"
+                                        name="confirmPassword"
+                                        value={formData.confirmPassword}
+                                        onChange={handleChange}
+                                        required
+                                        minLength="6"
+                                    />
+                                    <button
+                                        className="btn btn-outline-secondary"
+                                        type="button"
+                                        onMouseDown={() => setShowConfirmPassword(true)}
+                                        onMouseUp={() => setShowConfirmPassword(false)}
+                                        onMouseLeave={() => setShowConfirmPassword(false)}
+                                        onTouchStart={() => setShowConfirmPassword(true)}
+                                        onTouchEnd={() => setShowConfirmPassword(false)}
+                                        tabIndex="-1"
+                                    >
+                                        <i className={`bi bi-eye${showConfirmPassword ? '-slash' : ''}-fill`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="mb-4 d-flex justify-content-center">
+                                <ReCAPTCHA
+                                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                    onChange={handleCaptchaChange}
                                 />
                             </div>
                             <div className="d-flex justify-content-center">
@@ -235,13 +272,19 @@ function AdminSignup() {
                                     className="btn btn-primary position-relative"
                                     style={{ width: '150px' }}
                                 >
-                                    Sign Up
+                                    Register
                                 </button>
                             </div>
                             <div className="text-center mt-3">
                                 <span className="text-muted">Already have an account? </span>
                                 <Link to="/admin/login" className="text-primary text-decoration-none">
                                     Login
+                                </Link>
+                            </div>
+                            <div className="text-center mt-3">
+                                <Link to="/" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center" style={{ gap: '0.5rem' }}>
+                                    <i className="bi bi-house-door"></i>
+                                    <span>Return to Homepage</span>
                                 </Link>
                             </div>
                         </form>

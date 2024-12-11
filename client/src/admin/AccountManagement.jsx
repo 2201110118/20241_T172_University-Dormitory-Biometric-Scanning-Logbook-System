@@ -75,6 +75,7 @@ function AdminAccountManagement() {
     const [pendingChanges, setPendingChanges] = useState(null);
 
     const [isLoading, setIsLoading] = useState(true);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const fetchStudents = async () => {
         setIsLoading(true);
@@ -108,26 +109,48 @@ function AdminAccountManagement() {
         console.log('Unregistered students:', unregisteredStudents);
     }, [registeredStudents, unregisteredStudents]);
 
-    const handleDelete = async (studentid) => {
+    const handleArchive = async (studentid) => {
         setStudentToDelete(studentid);
         setShowDeleteConfirmModal(true);
     };
 
-    const confirmDelete = async () => {
+    const confirmArchive = async () => {
         try {
+            setIsProcessing(true);
             const response = await fetch(`http://localhost:5000/api/student/${studentToDelete}`, {
-                method: 'DELETE',
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    archive: true
+                })
             });
 
-            if (!response.ok) throw new Error('Failed to delete student');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to archive student');
+            }
 
-            const result = await response.json();
-            console.log(`Student deleted successfully! Related records deleted: Messages: ${result.deletedRecords.messages}, Logs: ${result.deletedRecords.logs}`);
-
-            fetchStudents();
+            await fetchStudents();
             setShowDeleteConfirmModal(false);
+
+            // Show success modal
+            const successModal = document.getElementById('successModal');
+            const successModalBody = document.getElementById('successModalBody');
+            successModalBody.textContent = 'Student has been archived successfully!';
+            new bootstrap.Modal(successModal).show();
+
         } catch (error) {
-            console.error('Error deleting student:', error);
+            console.error('Error archiving student:', error);
+
+            // Show error modal
+            const errorModal = document.getElementById('errorModal');
+            const errorModalBody = document.getElementById('errorModalBody');
+            errorModalBody.textContent = error.message || 'An error occurred while archiving the student.';
+            new bootstrap.Modal(errorModal).show();
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -156,11 +179,15 @@ function AdminAccountManagement() {
     };
 
     const getRegisteredStudents = () => {
-        return students.filter(student => student.registeredaccount);
+        return students.filter(student => student.registeredaccount && !student.archive);
     };
 
     const getUnregisteredStudents = () => {
-        return students.filter(student => !student.registeredaccount);
+        return students.filter(student => !student.registeredaccount && !student.archive);
+    };
+
+    const getTotalActiveStudents = () => {
+        return students.filter(student => !student.archive).length;
     };
 
     const getFilteredRegisteredStudents = () => {
@@ -252,6 +279,7 @@ function AdminAccountManagement() {
         }
 
         try {
+            setIsProcessing(true);
             const updatedData = {
                 studentid: Number(pendingChanges.studentid),
                 fullname: {
@@ -297,8 +325,23 @@ function AdminAccountManagement() {
             await fetchStudents();
             setShowEditModal(false);
             setShowSaveConfirmModal(false);
+
+            // Show success modal
+            const successModal = document.getElementById('successModal');
+            const successModalBody = document.getElementById('successModalBody');
+            successModalBody.textContent = 'Student information has been updated successfully!';
+            new bootstrap.Modal(successModal).show();
+
         } catch (error) {
             console.error('Error updating student:', error);
+
+            // Show error modal
+            const errorModal = document.getElementById('errorModal');
+            const errorModalBody = document.getElementById('errorModalBody');
+            errorModalBody.textContent = error.message || 'An error occurred while updating student information.';
+            new bootstrap.Modal(errorModal).show();
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -310,6 +353,7 @@ function AdminAccountManagement() {
 
     const confirmRegistration = async () => {
         try {
+            setIsProcessing(true);
             const currentDate = new Date().toISOString();
             const updatedData = {
                 studentid: Number(editForm.studentid),
@@ -361,9 +405,104 @@ function AdminAccountManagement() {
             await fetchStudents();
             setShowEditModal(false);
             setShowConfirmRegistrationModal(false);
-            console.log('Student registration has been confirmed successfully!');
+
+            // Show success modal
+            const successModal = document.getElementById('successModal');
+            const successModalBody = document.getElementById('successModalBody');
+            successModalBody.textContent = 'Student registration has been confirmed successfully!';
+            new bootstrap.Modal(successModal).show();
+
         } catch (error) {
             console.error('Error confirming student:', error);
+
+            // Show error modal
+            const errorModal = document.getElementById('errorModal');
+            const errorModalBody = document.getElementById('errorModalBody');
+            errorModalBody.textContent = error.message || 'An error occurred while confirming student registration.';
+            new bootstrap.Modal(errorModal).show();
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleConfirmAction = async () => {
+        try {
+            setIsProcessing(true);
+            const confirmBtn = document.getElementById('confirmActionBtn');
+            const closeBtn = confirmBtn.previousElementSibling;
+
+            // Disable both buttons during processing
+            confirmBtn.disabled = true;
+            closeBtn.disabled = true;
+
+            if (selectedAction === 'confirm') {
+                const response = await fetch(`http://localhost:5000/api/student/${selectedStudent._id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        'accountStatus.isConfirmed': true,
+                        'accountStatus.verificationDate': new Date().toLocaleDateString(),
+                        'registeredaccount': true
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to confirm student');
+                }
+            } else if (selectedAction === 'archive') {
+                const response = await fetch(`http://localhost:5000/api/student/${selectedStudent._id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        archive: true
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to archive student');
+                }
+            }
+
+            // Close confirmation modal
+            const confirmationModal = document.getElementById('confirmationModal');
+            const bsConfirmationModal = bootstrap.Modal.getInstance(confirmationModal);
+            bsConfirmationModal.hide();
+
+            // Show success modal
+            const successModal = document.getElementById('successModal');
+            const successModalBody = document.getElementById('successModalBody');
+            successModalBody.textContent = selectedAction === 'confirm'
+                ? 'Student account has been confirmed successfully!'
+                : 'Student account has been archived successfully!';
+            new bootstrap.Modal(successModal).show();
+
+            // Refresh the student list
+            await fetchStudents();
+
+        } catch (error) {
+            console.error('Error:', error);
+
+            // Close confirmation modal
+            const confirmationModal = document.getElementById('confirmationModal');
+            const bsConfirmationModal = bootstrap.Modal.getInstance(confirmationModal);
+            bsConfirmationModal.hide();
+
+            // Show error modal
+            const errorModal = document.getElementById('errorModal');
+            const errorModalBody = document.getElementById('errorModalBody');
+            errorModalBody.textContent = error.message || 'An error occurred while processing your request.';
+            new bootstrap.Modal(errorModal).show();
+        } finally {
+            setIsProcessing(false);
+            // Re-enable buttons
+            const confirmBtn = document.getElementById('confirmActionBtn');
+            const closeBtn = confirmBtn.previousElementSibling;
+            confirmBtn.disabled = false;
+            closeBtn.disabled = false;
         }
     };
 
@@ -416,9 +555,10 @@ function AdminAccountManagement() {
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(row.studentid)}
+                        onClick={() => handleArchive(row.studentid)}
+                        title="Archive Student"
                     >
-                        <i className="bi bi-trash2-fill text-white" style={{ fontSize: "0.875rem" }} />
+                        <i className="bi bi-archive-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                 </div>
             ),
@@ -476,9 +616,10 @@ function AdminAccountManagement() {
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(row.studentid)}
+                        onClick={() => handleArchive(row.studentid)}
+                        title="Archive Student"
                     >
-                        <i className="bi bi-trash2-fill text-white" style={{ fontSize: "0.875rem" }} />
+                        <i className="bi bi-archive-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                 </div>
             ),
@@ -579,7 +720,7 @@ function AdminAccountManagement() {
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <h6 className="text-muted mb-2">Total Students</h6>
-                                                        <h3 className="mb-0">{students.length}</h3>
+                                                        <h3 className="mb-0">{getTotalActiveStudents()}</h3>
                                                     </div>
                                                     <div className="bg-primary bg-opacity-10 p-3 rounded">
                                                         <i className="bi bi-people text-primary" style={{ fontSize: '1.5rem' }}></i>
@@ -1099,31 +1240,41 @@ function AdminAccountManagement() {
                         style={{ display: 'block' }}
                         tabIndex="-1"
                         role="dialog"
-                        aria-labelledby="deleteModalLabel"
+                        aria-labelledby="deleteConfirmModalLabel"
                         aria-hidden="true">
                         <div className="modal-dialog modal-dialog-centered">
                             <div className="modal-content">
                                 <div className="modal-header">
-                                    <h5 className="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                                    <h5 className="modal-title" id="deleteConfirmModalLabel">Archive Student</h5>
                                     <button type="button"
                                         className="btn-close"
                                         onClick={() => setShowDeleteConfirmModal(false)}
+                                        disabled={isProcessing}
                                         aria-label="Close">
                                     </button>
                                 </div>
                                 <div className="modal-body">
-                                    Are you sure you want to delete this student? This action cannot be undone.
+                                    Are you sure you want to archive this student? The student will no longer appear in the tables.
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowDeleteConfirmModal(false)}>
+                                        onClick={() => setShowDeleteConfirmModal(false)}
+                                        disabled={isProcessing}>
                                         Cancel
                                     </button>
                                     <button type="button"
                                         className="btn btn-danger"
-                                        onClick={confirmDelete}>
-                                        Delete
+                                        onClick={confirmArchive}
+                                        disabled={isProcessing}>
+                                        {isProcessing ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Archiving...
+                                            </>
+                                        ) : (
+                                            'Archive'
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -1148,6 +1299,7 @@ function AdminAccountManagement() {
                                     <button type="button"
                                         className="btn-close"
                                         onClick={() => setShowConfirmRegistrationModal(false)}
+                                        disabled={isProcessing}
                                         aria-label="Close">
                                     </button>
                                 </div>
@@ -1157,13 +1309,22 @@ function AdminAccountManagement() {
                                 <div className="modal-footer">
                                     <button type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowConfirmRegistrationModal(false)}>
+                                        onClick={() => setShowConfirmRegistrationModal(false)}
+                                        disabled={isProcessing}>
                                         Cancel
                                     </button>
                                     <button type="button"
                                         className="btn btn-success"
-                                        onClick={confirmRegistration}>
-                                        Confirm
+                                        onClick={confirmRegistration}
+                                        disabled={isProcessing}>
+                                        {isProcessing ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Confirming...
+                                            </>
+                                        ) : (
+                                            'Confirm'
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -1191,6 +1352,7 @@ function AdminAccountManagement() {
                                     <button type="button"
                                         className="btn-close"
                                         onClick={() => setShowSaveConfirmModal(false)}
+                                        disabled={isProcessing}
                                         aria-label="Close">
                                     </button>
                                 </div>
@@ -1200,13 +1362,22 @@ function AdminAccountManagement() {
                                 <div className="modal-footer">
                                     <button type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowSaveConfirmModal(false)}>
+                                        onClick={() => setShowSaveConfirmModal(false)}
+                                        disabled={isProcessing}>
                                         Cancel
                                     </button>
                                     <button type="button"
                                         className="btn btn-primary"
-                                        onClick={handleSaveConfirm}>
-                                        Save Changes
+                                        onClick={handleSaveConfirm}
+                                        disabled={isProcessing}>
+                                        {isProcessing ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save Changes'
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -1215,6 +1386,84 @@ function AdminAccountManagement() {
                     <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
                 </>
             )}
+
+            {/* Confirmation Modal */}
+            <div className="modal fade admin-modal" id="confirmationModal" tabIndex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="confirmationModalTitle">Confirm Action</h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="text-center">
+                                <i className="bi bi-question-circle text-warning modal-icon" style={{ fontSize: '3rem' }}></i>
+                                <p className="mt-3" id="confirmationModalBody">Are you sure you want to proceed?</p>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                id="confirmActionBtn"
+                                disabled={isProcessing}
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    'Confirm'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Success Modal */}
+            <div className="modal fade admin-modal" id="successModal" tabIndex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title">Success</h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="text-center">
+                                <i className="bi bi-check-circle text-success success-icon" style={{ fontSize: '3rem' }}></i>
+                                <p className="mt-3" id="successModalBody">Operation completed successfully!</p>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Error Modal */}
+            <div className="modal fade admin-modal" id="errorModal" tabIndex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title">Error</h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="text-center">
+                                <i className="bi bi-exclamation-circle text-danger error-icon" style={{ fontSize: '3rem' }}></i>
+                                <p className="mt-3" id="errorModalBody">An error occurred.</p>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </>
     );
 }

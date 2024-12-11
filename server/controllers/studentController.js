@@ -1,6 +1,7 @@
 import Students from '../models/student.js';
 import Messages from '../models/message.js';
 import Logs from '../models/log.js';
+import axios from 'axios';
 
 const getStudents = async (req, res) => {
   try {
@@ -25,14 +26,51 @@ const getStudent = async (req, res) => {
   }
 };
 
+const verifyRecaptcha = async (token) => {
+  try {
+    const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
+      params: {
+        secret: process.env.RECAPTCHA_SECRET_KEY,
+        response: token
+      }
+    });
+    return response.data.success;
+  } catch (error) {
+    console.error('reCAPTCHA verification error:', error);
+    return false;
+  }
+};
+
 const postStudent = async (req, res) => {
   try {
-    const student = new Students(req.body); // Fixed model name
-    const savedStudent = await student.save();
-    res.status(201).json(savedStudent);
+    const { captchaToken, confirmPassword, ...studentData } = req.body;
+
+    // Verify reCAPTCHA
+    if (!captchaToken) {
+      return res.status(400).json({ message: 'Please complete the reCAPTCHA verification' });
+    }
+
+    const isValidCaptcha = await verifyRecaptcha(captchaToken);
+    if (!isValidCaptcha) {
+      return res.status(400).json({ message: 'Invalid reCAPTCHA. Please try again.' });
+    }
+
+    // Add default values
+    studentData.registeredaccount = false;
+    studentData.accountStatus = {
+      isConfirmed: false,
+      submissionDate: new Date().toISOString()
+    };
+
+    const student = await Students.create(studentData);
+    res.status(201).json(student);
   } catch (error) {
-    console.error('Error adding student:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    if (error.code === 11000) {
+      res.status(400).json({ message: 'Student ID already exists' });
+    } else {
+      console.error('Error creating student:', error);
+      res.status(400).json({ message: error.message });
+    }
   }
 };
 
@@ -124,4 +162,70 @@ const deleteStudent = async (req, res) => {
   }
 };
 
-export { getStudents, getStudent, postStudent, updateStudent, deleteStudent };
+// Check if student exists by Gmail
+const checkGoogleStudent = async (req, res) => {
+  try {
+    const { gmail } = req.body;
+    const student = await Students.findOne({ gmail });
+
+    if (student) {
+      // Check if the account is registered and confirmed
+      return res.json({
+        exists: true,
+        isRegistered: student.registeredaccount,
+        isConfirmed: student.accountStatus.isConfirmed
+      });
+    }
+
+    return res.json({ exists: false });
+  } catch (error) {
+    console.error('Error checking student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Login with Google
+const loginWithGoogle = async (req, res) => {
+  try {
+    const { gmail, googleId } = req.body;
+    const student = await Students.findOne({ gmail });
+
+    if (!student) {
+      return res.status(404).json({
+        message: 'No account found with this email',
+        shouldSignup: true
+      });
+    }
+
+    if (!student.registeredaccount) {
+      return res.status(403).json({
+        message: 'Account not registered',
+        isConfirmed: false
+      });
+    }
+
+    // Update googleId if not already set
+    if (!student.googleId && googleId) {
+      student.googleId = googleId;
+      await student.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      student: {
+        studentid: student.studentid,
+        fullname: student.fullname,
+        gmail: student.gmail,
+        roomnumber: student.roomnumber,
+        registeredaccount: student.registeredaccount,
+        accountStatus: student.accountStatus
+      }
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export { getStudents, getStudent, postStudent, updateStudent, deleteStudent, checkGoogleStudent, loginWithGoogle };

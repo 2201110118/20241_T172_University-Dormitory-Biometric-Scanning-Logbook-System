@@ -43,22 +43,26 @@ function AdminLogbookHistory() {
     };
 
     const handleDelete = async () => {
-        console.log('Attempting to delete log ID:', logToDelete);
+        console.log('Attempting to archive log ID:', logToDelete);
         try {
             const response = await fetch(`http://localhost:5000/api/log/${logToDelete}`, {
-                method: 'DELETE',
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ archive: true })
             });
 
             if (!response.ok) {
-                console.error('Delete response not OK:', response);
-                throw new Error('Failed to delete log');
+                console.error('Archive response not OK:', response);
+                throw new Error('Failed to archive log');
             }
 
-            console.log('Log successfully deleted, fetching updated logs...');
+            console.log('Log successfully archived, fetching updated logs...');
             await fetchLogs();
             setShowDeleteModal(false);
         } catch (error) {
-            console.error('Error in handleDelete:', error);
+            console.error('Error in handleArchive:', error);
         }
     };
 
@@ -116,7 +120,7 @@ function AdminLogbookHistory() {
                         className="btn btn-danger btn-sm"
                         onClick={() => openDeleteModal(row.logid)}
                     >
-                        <i className="bi bi-trash2-fill" />
+                        <i className="bi bi-archive-fill" />
                     </button>
                 </div>
             ),
@@ -402,7 +406,7 @@ function AdminLogbookHistory() {
                         <div className="modal-dialog modal-dialog-centered">
                             <div className="modal-content">
                                 <div className="modal-header">
-                                    <h5 className="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                                    <h5 className="modal-title" id="deleteModalLabel">Confirm Archive</h5>
                                     <button type="button"
                                         className="btn-close"
                                         onClick={() => setShowDeleteModal(false)}
@@ -410,7 +414,7 @@ function AdminLogbookHistory() {
                                     </button>
                                 </div>
                                 <div className="modal-body">
-                                    Are you sure you want to delete this log? This action cannot be undone.
+                                    Are you sure you want to archive this log? The log will no longer appear in the tables.
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button"
@@ -419,9 +423,9 @@ function AdminLogbookHistory() {
                                         Cancel
                                     </button>
                                     <button type="button"
-                                        className="btn btn-danger"
+                                        className="btn btn-primary"
                                         onClick={handleDelete}>
-                                        Delete
+                                        Archive
                                     </button>
                                 </div>
                             </div>

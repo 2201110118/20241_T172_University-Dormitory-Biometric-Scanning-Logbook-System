@@ -32,7 +32,8 @@ import studentRoute from './routes/studentRoute.js';
 import adminRoute from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
 import logRoute from './routes/logRoute.js';
-import loginRoute from './routes/loginRouteAdmin.js';
+import loginRouteAdmin from './routes/loginRouteAdmin.js';
+import loginRouteStudent from './routes/loginRouteStudent.js';
 
 // Define API routes
 // Admin API routes
@@ -41,10 +42,10 @@ app.use('/api/admin', adminRoute);
 app.use('/api/student', studentRoute);
 
 app.use('/api/message', messageRoute);
-
 app.use('/api/log', logRoute);
 
-app.use('/api/login', loginRoute);
+app.use('/api/login', loginRouteAdmin);
+app.use('/api/login', loginRouteStudent);
 
 // Connect to the MongoDB database using the URI from environment variables
 mongoose.connect(process.env.MONGO_URI)

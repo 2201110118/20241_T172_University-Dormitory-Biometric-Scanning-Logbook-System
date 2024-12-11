@@ -21,18 +21,22 @@ function AccountSettings() {
     const [showUsernameConfirmModal, setShowUsernameConfirmModal] = useState(false);
     const [pendingPasswords, setPendingPasswords] = useState(null);
     const [pendingUsername, setPendingUsername] = useState(null);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showCurrentPasswordUsername, setShowCurrentPasswordUsername] = useState(false);
 
     const handlePasswordChange = (e) => {
         setPasswords({
             ...passwords,
-            [e.target.id]: e.target.value
+            [e.target.name]: e.target.value
         });
     };
 
     const handleUsernameChange = (e) => {
         setUsername({
             ...username,
-            [e.target.id]: e.target.value
+            [e.target.name]: e.target.value
         });
     };
 
@@ -160,6 +164,8 @@ function AccountSettings() {
             if (currentAdmin) {
                 currentAdmin.username = pendingUsername.newUsername;
                 localStorage.setItem('admin', JSON.stringify(currentAdmin));
+                // Dispatch custom event to update header
+                window.dispatchEvent(new Event('usernameChanged'));
             }
         } catch (error) {
             console.error('Full error:', error);
@@ -261,43 +267,88 @@ function AccountSettings() {
                                                 )}
                                                 <form onSubmit={handlePasswordSubmit}>
                                                     <div className="mb-3">
-                                                        <label htmlFor="currentPassword" className="form-label">Current Password</label>
-                                                        <input
-                                                            type="password"
-                                                            className="form-control"
-                                                            id="currentPassword"
-                                                            placeholder="Enter current password"
-                                                            value={passwords.currentPassword}
-                                                            onChange={handlePasswordChange}
-                                                            required
-                                                            minLength="6"
-                                                        />
+                                                        <label htmlFor="currentPasswordChange" className="form-label">Current Password</label>
+                                                        <div className="input-group">
+                                                            <input
+                                                                type={showCurrentPassword ? "text" : "password"}
+                                                                className="form-control"
+                                                                id="currentPasswordChange"
+                                                                placeholder="Enter current password"
+                                                                name="currentPassword"
+                                                                value={passwords.currentPassword}
+                                                                onChange={handlePasswordChange}
+                                                                required
+                                                                minLength="6"
+                                                            />
+                                                            <button
+                                                                className="btn btn-outline-secondary"
+                                                                type="button"
+                                                                onMouseDown={() => setShowCurrentPassword(true)}
+                                                                onMouseUp={() => setShowCurrentPassword(false)}
+                                                                onMouseLeave={() => setShowCurrentPassword(false)}
+                                                                onTouchStart={() => setShowCurrentPassword(true)}
+                                                                onTouchEnd={() => setShowCurrentPassword(false)}
+                                                                tabIndex="-1"
+                                                            >
+                                                                <i className={`bi bi-eye${showCurrentPassword ? '-slash' : ''}-fill`}></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="mb-3">
                                                         <label htmlFor="newPassword" className="form-label">New Password</label>
-                                                        <input
-                                                            type="password"
-                                                            className="form-control"
-                                                            id="newPassword"
-                                                            placeholder="Enter new password"
-                                                            value={passwords.newPassword}
-                                                            onChange={handlePasswordChange}
-                                                            required
-                                                            minLength="6"
-                                                        />
+                                                        <div className="input-group">
+                                                            <input
+                                                                type={showNewPassword ? "text" : "password"}
+                                                                className="form-control"
+                                                                id="newPassword"
+                                                                placeholder="Enter new password"
+                                                                name="newPassword"
+                                                                value={passwords.newPassword}
+                                                                onChange={handlePasswordChange}
+                                                                required
+                                                                minLength="6"
+                                                            />
+                                                            <button
+                                                                className="btn btn-outline-secondary"
+                                                                type="button"
+                                                                onMouseDown={() => setShowNewPassword(true)}
+                                                                onMouseUp={() => setShowNewPassword(false)}
+                                                                onMouseLeave={() => setShowNewPassword(false)}
+                                                                onTouchStart={() => setShowNewPassword(true)}
+                                                                onTouchEnd={() => setShowNewPassword(false)}
+                                                                tabIndex="-1"
+                                                            >
+                                                                <i className={`bi bi-eye${showNewPassword ? '-slash' : ''}-fill`}></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="mb-3">
                                                         <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
-                                                        <input
-                                                            type="password"
-                                                            className="form-control"
-                                                            id="confirmPassword"
-                                                            placeholder="Confirm new password"
-                                                            value={passwords.confirmPassword}
-                                                            onChange={handlePasswordChange}
-                                                            required
-                                                            minLength="6"
-                                                        />
+                                                        <div className="input-group">
+                                                            <input
+                                                                type={showConfirmPassword ? "text" : "password"}
+                                                                className="form-control"
+                                                                id="confirmPassword"
+                                                                name="confirmPassword"
+                                                                placeholder="Confirm new password"
+                                                                value={passwords.confirmPassword}
+                                                                onChange={handlePasswordChange}
+                                                                required
+                                                                minLength="6"
+                                                            />
+                                                            <button
+                                                                className="btn btn-outline-secondary"
+                                                                type="button"
+                                                                onMouseDown={() => setShowConfirmPassword(true)}
+                                                                onMouseUp={() => setShowConfirmPassword(false)}
+                                                                onMouseLeave={() => setShowConfirmPassword(false)}
+                                                                onTouchStart={() => setShowConfirmPassword(true)}
+                                                                onTouchEnd={() => setShowConfirmPassword(false)}
+                                                                tabIndex="-1"
+                                                            >
+                                                                <i className={`bi bi-eye${showConfirmPassword ? '-slash' : ''}-fill`}></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <button type="submit" className="btn btn-primary">
                                                         <i className="bi bi-check2-circle me-2"></i>
@@ -325,17 +376,32 @@ function AccountSettings() {
                                                 )}
                                                 <form onSubmit={handleUsernameSubmit}>
                                                     <div className="mb-3">
-                                                        <label htmlFor="currentPassword" className="form-label">Current Password</label>
-                                                        <input
-                                                            type="password"
-                                                            className="form-control"
-                                                            id="currentPassword"
-                                                            placeholder="Enter current password"
-                                                            value={username.currentPassword}
-                                                            onChange={handleUsernameChange}
-                                                            required
-                                                            minLength="6"
-                                                        />
+                                                        <label htmlFor="currentPasswordUsername" className="form-label">Current Password</label>
+                                                        <div className="input-group">
+                                                            <input
+                                                                type={showCurrentPasswordUsername ? "text" : "password"}
+                                                                className="form-control"
+                                                                id="currentPasswordUsername"
+                                                                placeholder="Enter current password"
+                                                                name="currentPassword"
+                                                                value={username.currentPassword}
+                                                                onChange={handleUsernameChange}
+                                                                required
+                                                                minLength="6"
+                                                            />
+                                                            <button
+                                                                className="btn btn-outline-secondary"
+                                                                type="button"
+                                                                onMouseDown={() => setShowCurrentPasswordUsername(true)}
+                                                                onMouseUp={() => setShowCurrentPasswordUsername(false)}
+                                                                onMouseLeave={() => setShowCurrentPasswordUsername(false)}
+                                                                onTouchStart={() => setShowCurrentPasswordUsername(true)}
+                                                                onTouchEnd={() => setShowCurrentPasswordUsername(false)}
+                                                                tabIndex="-1"
+                                                            >
+                                                                <i className={`bi bi-eye${showCurrentPasswordUsername ? '-slash' : ''}-fill`}></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="mb-3">
                                                         <label htmlFor="newUsername" className="form-label">New Username</label>
@@ -343,6 +409,7 @@ function AccountSettings() {
                                                             type="text"
                                                             className="form-control"
                                                             id="newUsername"
+                                                            name="newUsername"
                                                             placeholder="Enter new username"
                                                             value={username.newUsername}
                                                             onChange={handleUsernameChange}
@@ -355,6 +422,7 @@ function AccountSettings() {
                                                             type="text"
                                                             className="form-control"
                                                             id="confirmUsername"
+                                                            name="confirmUsername"
                                                             placeholder="Confirm new username"
                                                             value={username.confirmUsername}
                                                             onChange={handleUsernameChange}

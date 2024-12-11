@@ -62,8 +62,9 @@ const updateMessage = async (req, res) => {
             { messageid: messageid },
             {
                 $set: {
-                    'requestStatus.isConfirmed': req.body.requestStatus.isConfirmed,
-                    'requestStatus.confirmationDate': req.body.requestStatus.confirmationDate
+                    'requestStatus.isConfirmed': req.body.requestStatus?.isConfirmed,
+                    'requestStatus.confirmationDate': req.body.requestStatus?.confirmationDate,
+                    'archive': req.body.archive
                 }
             },
             { new: true }

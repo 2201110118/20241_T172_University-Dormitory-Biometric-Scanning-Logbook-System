@@ -19,7 +19,7 @@ function AdminDashboard() {
             const response = await fetch('http://localhost:5000/api/log/');
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
-            const sortedData = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const sortedData = data.sort((a, b) => new Date(b.timestamp.date) - new Date(a.timestamp.date));
             setLogs(sortedData);
         } catch (error) {
             console.error(`Error fetching logs: ${error}`);
@@ -99,20 +99,19 @@ function AdminDashboard() {
             name: 'Log Type',
             selector: row => row.logType,
             sortable: false,
-            width: '100px',
+            width: '120px',
         },
         {
-            name: 'Timestamp',
-            selector: row => {
-                const date = new Date(row.timestamp);
-                return date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            },
+            name: 'Date',
+            selector: row => row.timestamp?.date || 'N/A',
             sortable: false,
-            width: '200px',
+            width: '120px',
+        },
+        {
+            name: 'Time',
+            selector: row => row.timestamp?.time || 'N/A',
+            sortable: false,
+            width: '120px',
         }
     ];
 
@@ -189,15 +188,7 @@ function AdminDashboard() {
         },
         {
             name: 'Verification Date',
-            selector: row => {
-                const date = row.accountStatus?.verificationDate;
-                if (!date) return 'N/A';
-                return new Date(date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            },
+            selector: row => row.accountStatus?.verificationDate || 'N/A',
             sortable: false,
             width: '200px',
             wrap: true,
@@ -235,15 +226,7 @@ function AdminDashboard() {
         },
         {
             name: 'Submission Date',
-            selector: row => {
-                const date = row.accountStatus?.submissionDate;
-                if (!date) return 'N/A';
-                return new Date(date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            },
+            selector: row => row.accountStatus?.submissionDate || 'N/A',
             sortable: false,
             width: '200px',
             wrap: true,
@@ -255,11 +238,15 @@ function AdminDashboard() {
 
     // Fix the filter functions for students
     const getRegisteredStudents = () => {
-        return students.filter(student => student.registeredaccount);
+        return students.filter(student => student.registeredaccount && !student.archive);
     };
 
     const getUnregisteredStudents = () => {
-        return students.filter(student => !student.registeredaccount);
+        return students.filter(student => !student.registeredaccount && !student.archive);
+    };
+
+    const getTotalActiveStudents = () => {
+        return students.filter(student => !student.archive).length;
     };
 
     return (
@@ -344,7 +331,7 @@ function AdminDashboard() {
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <div>
                                                         <h6 className="text-muted mb-2">Total Students</h6>
-                                                        <h3 className="mb-0">{students.length}</h3>
+                                                        <h3 className="mb-0">{getTotalActiveStudents()}</h3>
                                                     </div>
                                                     <div className="bg-primary bg-opacity-10 p-3 rounded">
                                                         <i className="bi bi-people text-primary" style={{ fontSize: '1.5rem' }}></i>
@@ -415,9 +402,9 @@ function AdminDashboard() {
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                                 <h5 className="mb-0">Recent Logs</h5>
-                                                <Link to="/AdminLogBookHistory" className="btn btn-sm btn-outline-primary">
+                                                <Link to="/AdminLogBookHistory" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
                                                     <i className="bi bi-clock-history me-2"></i>
-                                                    View Logbook History
+                                                    <span>View Logbook History</span>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
@@ -443,9 +430,9 @@ function AdminDashboard() {
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                                 <h5 className="mb-0">Night Pass Requests</h5>
-                                                <Link to="/AdminNightPass" className="btn btn-sm btn-outline-primary">
+                                                <Link to="/AdminNightPass" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
                                                     <i className="bi bi-chat-left-dots me-2"></i>
-                                                    View Night Pass
+                                                    <span>View Night Pass</span>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
@@ -471,9 +458,9 @@ function AdminDashboard() {
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                                 <h5 className="mb-0">Recent Registered Students</h5>
-                                                <Link to="/AdminAccountManagement" className="btn btn-sm btn-outline-primary">
+                                                <Link to="/AdminAccountManagement" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
                                                     <i className="bi bi-person-lines-fill me-2"></i>
-                                                    View Account Management
+                                                    <span>View Account Management</span>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
@@ -501,10 +488,10 @@ function AdminDashboard() {
                                                 <h5 className="mb-0">Recent Registration Requests</h5>
                                                 <Link
                                                     to="/AdminAccountManagement?tab=unregistered"
-                                                    className="btn btn-sm btn-outline-primary"
+                                                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center"
                                                 >
                                                     <i className="bi bi-person-plus me-2"></i>
-                                                    View Registration Requests
+                                                    <span>View Registration Requests</span>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
