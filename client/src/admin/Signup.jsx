@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Modal } from 'bootstrap';
 import ReCAPTCHA from "react-google-recaptcha";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
-import logo from '../assets/logo.png';
 import logotitle from '../assets/logotitle.png';
+import logo from '../assets/logo.png';
 import './AdminAuth.css';
 
-function AdminLogin() {
+function AdminSignup() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         username: '',
-        password: ''
+        password: '',
+        confirmPassword: ''
     });
     const [error, setError] = useState('');
     const [isVisible, setIsVisible] = useState(false);
@@ -20,10 +21,10 @@ function AdminLogin() {
     const [errorModal, setErrorModal] = useState(null);
     const [captchaToken, setCaptchaToken] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
         setIsVisible(true);
-        // Initialize modal
         const modal = new Modal(document.getElementById('errorModal'));
         setErrorModal(modal);
         return () => {
@@ -56,8 +57,14 @@ function AdminLogin() {
             return;
         }
 
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match');
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            const response = await fetch('http://localhost:5000/api/login/admin', {
+            const response = await fetch('http://localhost:5000/api/signup/admin', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,17 +79,15 @@ function AdminLogin() {
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.message || 'Login failed');
+                setError(data.message || 'Signup failed');
                 setIsLoading(false);
                 return;
             }
 
-            localStorage.setItem('adminLoggedIn', 'true');
-            localStorage.setItem('admin', JSON.stringify(data.admin));
-            navigate('/AdminDashboard');
+            navigate('/admin/login');
 
         } catch (error) {
-            console.error('Login error:', error);
+            console.error('Signup error:', error);
             setError('Unable to connect to the server. Please try again.');
         } finally {
             setIsLoading(false);
@@ -92,7 +97,7 @@ function AdminLogin() {
     return (
         <>
             {/* Error Modal */}
-            <div className="modal fade admin-modal" id="errorModal" tabIndex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+            <div className="modal fade" id="errorModal" tabIndex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
                 <div className="modal-dialog modal-dialog-centered">
                     <div className="modal-content">
                         <div className="modal-header">
@@ -101,7 +106,7 @@ function AdminLogin() {
                         </div>
                         <div className="modal-body">
                             <div className="text-center">
-                                <i className="bi bi-exclamation-circle text-warning error-icon" style={{ fontSize: '3rem' }}></i>
+                                <i className="bi bi-exclamation-circle text-warning" style={{ fontSize: '3rem' }}></i>
                                 <p className="mt-3" id="errorModalBody">Error message here</p>
                             </div>
                         </div>
@@ -119,7 +124,7 @@ function AdminLogin() {
                         <div className="spinner-border text-dark" role="status" style={{ width: '3rem', height: '3rem' }}>
                             <span className="visually-hidden">Loading...</span>
                         </div>
-                        <div className="mt-3 text-dark">Logging in...</div>
+                        <div className="mt-3 text-dark">Creating your account...</div>
                     </div>
                 </div>
             )}
@@ -170,7 +175,7 @@ function AdminLogin() {
                     {/* Right Side - Form */}
                     <div>
                         <i className="bi bi-shield-lock-fill mb-3" style={{ fontSize: '3rem' }}></i>
-                        <h4 className="mb-4">Admin Login</h4>
+                        <h4 className="mb-4">Admin Registration</h4>
                         {error && (
                             <div
                                 className="alert alert-danger py-1 px-2 d-flex align-items-center"
@@ -203,7 +208,7 @@ function AdminLogin() {
                                     required
                                 />
                             </div>
-                            <div className="mb-4 position-relative">
+                            <div className="mb-3 position-relative">
                                 <div className="input-group">
                                     <input
                                         type={showPassword ? "text" : "password"}
@@ -229,6 +234,32 @@ function AdminLogin() {
                                     </button>
                                 </div>
                             </div>
+                            <div className="mb-4 position-relative">
+                                <div className="input-group">
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        className="form-control"
+                                        placeholder="Confirm Password"
+                                        name="confirmPassword"
+                                        value={formData.confirmPassword}
+                                        onChange={handleChange}
+                                        required
+                                        minLength="6"
+                                    />
+                                    <button
+                                        className="btn btn-outline-secondary"
+                                        type="button"
+                                        onMouseDown={() => setShowConfirmPassword(true)}
+                                        onMouseUp={() => setShowConfirmPassword(false)}
+                                        onMouseLeave={() => setShowConfirmPassword(false)}
+                                        onTouchStart={() => setShowConfirmPassword(true)}
+                                        onTouchEnd={() => setShowConfirmPassword(false)}
+                                        tabIndex="-1"
+                                    >
+                                        <i className={`bi bi-eye${showConfirmPassword ? '-slash' : ''}-fill`}></i>
+                                    </button>
+                                </div>
+                            </div>
                             <div className="mb-4 d-flex justify-content-center">
                                 <ReCAPTCHA
                                     sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
@@ -241,13 +272,13 @@ function AdminLogin() {
                                     className="btn btn-primary position-relative"
                                     style={{ width: '150px' }}
                                 >
-                                    Login
+                                    Register
                                 </button>
                             </div>
                             <div className="text-center mt-3">
-                                <span className="text-muted">Don't have an account? </span>
-                                <Link to="/admin/signup" className="text-primary text-decoration-none">
-                                    Sign up
+                                <span className="text-muted">Already have an account? </span>
+                                <Link to="/admin/login" className="text-primary text-decoration-none">
+                                    Login
                                 </Link>
                             </div>
                             <div className="text-center mt-3">
@@ -264,5 +295,4 @@ function AdminLogin() {
     );
 }
 
-export default AdminLogin;
-
+export default AdminSignup; 
