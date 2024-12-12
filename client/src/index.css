@@ -1,0 +1,227 @@
+/* Global scrollbar styles */
+html,
+body {
+    overflow-y: overlay;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    background-color: #ebedef;
+}
+
+/* For Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+    width: 10px;
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background-color 0.2s ease;
+}
+
+/* Show scrollbar on hover/scroll */
+:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* For Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+*:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* Layout styles */
+#root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.container-fluid {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+.row {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fix for Bootstrap container overflow */
+.container-fluid.d-flex.row {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Modal Animations */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes modalFadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+}
+
+@keyframes backdropFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes backdropFadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+/* Admin Modal Styles */
+.admin-modal .modal-dialog {
+    animation: modalFadeIn 0.3s ease forwards;
+}
+
+.admin-modal.modal.fade .modal-dialog {
+    transform: none;
+}
+
+.admin-modal.modal.fade.show .modal-dialog {
+    transform: none;
+}
+
+.admin-modal.modal.fade .modal-backdrop {
+    animation: backdropFadeIn 0.2s ease forwards;
+}
+
+.admin-modal.modal.fade.hide .modal-dialog {
+    animation: modalFadeOut 0.3s ease forwards;
+}
+
+.admin-modal.modal.fade.hide .modal-backdrop {
+    animation: backdropFadeOut 0.2s ease forwards;
+}
+
+.admin-modal .modal-content {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    border: none;
+    border-radius: 8px;
+}
+
+.admin-modal .modal-header {
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 1.5rem;
+}
+
+.admin-modal .modal-body {
+    padding: 1.5rem;
+}
+
+.admin-modal .modal-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 1rem 1.5rem;
+}
+
+/* Modal Icon Animation */
+@keyframes iconBounce {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+.admin-modal .modal-icon {
+    animation: iconBounce 0.6s ease;
+}
+
+/* Modal Success Animation */
+@keyframes successCheck {
+    0% {
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.admin-modal .success-icon {
+    animation: successCheck 0.5s ease forwards;
+}
+
+/* Modal Error Animation */
+@keyframes errorShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-10px);
+    }
+
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+.admin-modal .error-icon {
+    animation: errorShake 0.5s ease;
+}
+
+/* ... rest of your existing styles ... */
