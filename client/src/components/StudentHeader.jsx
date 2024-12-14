@@ -1,28 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import '../admin/Login.css';
-import wallpaper from '../assets/wallpaper.png';
 
-function AdminHeader() {
+function StudentHeader() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [isExiting, setIsExiting] = useState(false);
-    const [adminUsername, setAdminUsername] = useState('Admin');
+    const [studentName, setStudentName] = useState('');
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Get admin info from session
+        // Get student info from session
         fetch('http://localhost:5000/api/auth/check-session', {
             credentials: 'include'
         })
             .then(response => response.json())
             .then(data => {
-                if (data.isAuthenticated && data.user) {
-                    setAdminUsername(data.user.username);
+                if (data.isAuthenticated && data.user && data.user.fullname) {
+                    setStudentName(`${data.user.fullname.firstname} ${data.user.fullname.lastname}`);
                 }
             })
             .catch(error => {
-                console.error('Error fetching admin info:', error);
+                console.error('Error fetching student info:', error);
             });
     }, []);
 
@@ -63,46 +61,6 @@ function AdminHeader() {
 
     return (
         <>
-            <style>
-                {`
-                    @keyframes slideIn {
-                        from {
-                            opacity: 0;
-                            transform: translateY(-10px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-                    
-                    .dropdown-menu.show {
-                        animation: slideIn 0.2s ease forwards;
-                    }
-                    
-                    .dropdown-item {
-                        transition: background-color 0.2s ease;
-                    }
-                    
-                    .dropdown-item:hover {
-                        background-color: #f8f9fa;
-                    }
-
-                    .header-dropdown {
-                        position: relative;
-                    }
-
-                    .header-dropdown .dropdown-menu {
-                        position: absolute;
-                        right: 0;
-                        top: 100%;
-                        margin-top: 0.5rem;
-                        min-width: 200px;
-                        transform-origin: top right;
-                        z-index: 1030;
-                    }
-                `}
-            </style>
             {isExiting && (
                 <div
                     className="loading-overlay"
@@ -129,7 +87,7 @@ function AdminHeader() {
             )}
             <header className="navbar navbar-expand-lg navbar-light bg-white fixed-top border-bottom shadow" style={{ height: '64px', zIndex: 1030 }}>
                 <div className="container-fluid px-4">
-                    <Link className="navbar-brand d-flex align-items-center" to="/AdminDashboard">
+                    <Link className="navbar-brand d-flex align-items-center" to="/StudentDashboard">
                         <img
                             src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png"
                             alt="Buksu Logo"
@@ -151,10 +109,10 @@ function AdminHeader() {
                                 aria-expanded={showDropdown}
                             >
                                 <i className="bi bi-person-circle me-2" style={{ fontSize: '1.5rem' }}></i>
-                                <span>{adminUsername}</span>
+                                <span>{studentName}</span>
                             </button>
                             <div className={`dropdown-menu shadow ${showDropdown ? 'show' : ''}`}>
-                                <Link to="/admin/account-settings" className="dropdown-item">
+                                <Link to="/student/account-settings" className="dropdown-item">
                                     <i className="bi bi-gear me-2"></i>
                                     Account Settings
                                 </Link>
@@ -175,4 +133,4 @@ function AdminHeader() {
     );
 }
 
-export default AdminHeader; 
+export default StudentHeader; 

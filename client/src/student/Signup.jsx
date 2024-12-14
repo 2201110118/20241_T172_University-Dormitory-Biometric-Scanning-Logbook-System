@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Modal } from 'bootstrap';
-import ReCAPTCHA from "react-google-recaptcha";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
-import logo from '../assets/logo.png';
-import logotitle from '../assets/logotitle.png';
-import '../student/StudentAuth.css';
+import BuksuLogo from '../components/BuksuLogo';
+import './StudentAuth.css';
 
 const StudentSignup = () => {
     const navigate = useNavigate();
@@ -43,7 +41,6 @@ const StudentSignup = () => {
 
     const [error, setError] = useState('');
     const [currentStep, setCurrentStep] = useState(1);
-    const [captchaToken, setCaptchaToken] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -90,27 +87,23 @@ const StudentSignup = () => {
         }
     };
 
-    const handleCaptchaChange = (token) => {
-        setCaptchaToken(token);
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
-        if (currentStep === 3) {
-            if (!captchaToken) {
-                setError('Please complete the reCAPTCHA verification');
-                setIsLoading(false);
-                return;
-            }
+        // Validate form fields
+        if (!formData.fullname.firstname || !formData.fullname.lastname || !formData.studentid || !formData.gmail || !formData.password || !formData.confirmPassword) {
+            setError('Please fill in all required fields');
+            setIsLoading(false);
+            return;
+        }
 
-            if (formData.password !== formData.confirmPassword) {
-                setError('Passwords do not match');
-                setIsLoading(false);
-                return;
-            }
+        // Validate password match
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match');
+            setIsLoading(false);
+            return;
         }
 
         // Validate student ID format
@@ -165,7 +158,6 @@ const StudentSignup = () => {
                 },
                 body: JSON.stringify({
                     ...dataToSend,
-                    captchaToken,
                     registeredaccount: false,
                     accountStatus: {
                         isConfirmed: false
@@ -181,17 +173,18 @@ const StudentSignup = () => {
             // Show success message and redirect
             document.getElementById('errorModalTitle').textContent = 'Registration Successful';
             document.getElementById('errorModalBody').textContent = 'Your account has been created successfully. Please wait for admin approval.';
+            setIsLoading(false);
             errorModal.show();
 
+            // Add event listener for modal close
             const modalElement = document.getElementById('errorModal');
             modalElement.addEventListener('hidden.bs.modal', () => {
                 navigate('/student/login');
             }, { once: true });
 
         } catch (error) {
-            console.error('Signup error:', error);
-            setError(error.message || 'An error occurred during registration');
-        } finally {
+            console.error('Registration error:', error);
+            setError(error.message || 'Registration failed. Please try again.');
             setIsLoading(false);
         }
     };
@@ -390,12 +383,6 @@ const StudentSignup = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <div className="mb-4 d-flex justify-content-center">
-                                    <ReCAPTCHA
-                                        sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                                        onChange={handleCaptchaChange}
-                                    />
-                                </div>
                             </>
                         )}
                     </>
@@ -450,43 +437,34 @@ const StudentSignup = () => {
                     backgroundRepeat: 'no-repeat'
                 }}
             >
-                <div className={`login-container shadow-lg d-flex rounded overflow-hidden ${isVisible ? 'visible' : ''}`}>
+                <div className={`login-container ${isVisible ? 'visible' : ''}`}>
+                    {/* Left Side - Image */}
                     <div
-                        className="position-relative"
                         style={{
-                            width: '600px',
-                            height: '700px',
                             backgroundImage: `url(${wallpaper2})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat'
+                            position: 'relative'
                         }}
                     >
-                        <div
-                            className="position-absolute top-50 start-50 translate-middle bg-white rounded d-flex flex-column justify-content-center align-items-center"
+                        <BuksuLogo />
+                        <Link
+                            to="/"
+                            className="btn btn-light position-absolute bottom-0 start-0 m-4 d-flex align-items-center"
                             style={{
-                                width: '240px',
-                                height: '280px'
+                                backgroundColor: '#ffffff',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                gap: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                color: '#6c757d',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid rgba(0,0,0,0.1)'
                             }}
                         >
-                            <img
-                                src={logotitle}
-                                alt="Logo Title"
-                                style={{
-                                    maxWidth: '200px',
-                                    height: 'auto'
-                                }}
-                            />
-                            <img
-                                src={logo}
-                                alt="Logo"
-                                style={{
-                                    maxWidth: '160px',
-                                    height: 'auto'
-                                }}
-                            />
-                        </div>
+                            <i className="bi bi-house-door"></i>
+                            <span>Return to Homepage</span>
+                        </Link>
                     </div>
+
                     <div
                         className="bg-white d-flex flex-column justify-content-center align-items-center p-5"
                         style={{
@@ -523,10 +501,10 @@ const StudentSignup = () => {
                                 <div key={step} className="d-flex align-items-center">
                                     <div
                                         className={`rounded-circle d-flex align-items-center justify-content-center ${step === currentStep
-                                                ? 'bg-primary text-white'
-                                                : step < currentStep
-                                                    ? 'bg-success text-white'
-                                                    : 'bg-light'
+                                            ? 'bg-primary text-white'
+                                            : step < currentStep
+                                                ? 'bg-success text-white'
+                                                : 'bg-light'
                                             }`}
                                         style={{
                                             width: '30px',
@@ -592,12 +570,6 @@ const StudentSignup = () => {
                             <span className="text-muted">Already have an account? </span>
                             <Link to="/student/login" className="text-primary text-decoration-none">
                                 Login
-                            </Link>
-                        </div>
-                        <div className="text-center mt-3">
-                            <Link to="/" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center">
-                                <i className="bi bi-house-door me-1"></i>
-                                Return to Homepage
                             </Link>
                         </div>
                     </div>

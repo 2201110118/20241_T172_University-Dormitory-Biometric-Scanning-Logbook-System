@@ -144,11 +144,19 @@ function AdminDashboard() {
         {
             name: 'Request Date',
             selector: row => {
-                const date = new Date(row.requestStatus.requestDate);
+                if (!row.requestStatus.requestDate) return 'N/A';
+
+                // Split the MM/DD/YYYY string
+                const [month, day, year] = row.requestStatus.requestDate.split('/');
+
+                // Create date object with explicit values (using local time)
+                const date = new Date(year, month - 1, day);  // month is 0-based in JS
+
                 return date.toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
-                    day: 'numeric'
+                    day: 'numeric',
+                    timeZone: 'UTC'  // Force UTC to prevent timezone shifts
                 });
             },
             sortable: false,

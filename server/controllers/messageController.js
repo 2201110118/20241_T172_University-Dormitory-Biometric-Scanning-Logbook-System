@@ -64,7 +64,8 @@ const updateMessage = async (req, res) => {
                 $set: {
                     'requestStatus.isConfirmed': req.body.requestStatus?.isConfirmed,
                     'requestStatus.confirmationDate': req.body.requestStatus?.confirmationDate,
-                    'archive': req.body.archive
+                    'archive': req.body.archive,
+                    'description': req.body.description
                 }
             },
             { new: true }
@@ -81,4 +82,22 @@ const updateMessage = async (req, res) => {
     }
 };
 
-export { getMessages, getMessage, deleteMessage, updateMessage };
+const createMessage = async (req, res) => {
+    try {
+        const { student, description, messageid, requestStatus } = req.body;
+        const message = new Messages({
+            student,
+            description,
+            messageid,
+            requestStatus
+        });
+
+        const savedMessage = await message.save();
+        res.status(201).json(savedMessage);
+    } catch (error) {
+        console.error('Error creating message:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export { getMessages, getMessage, deleteMessage, updateMessage, createMessage };

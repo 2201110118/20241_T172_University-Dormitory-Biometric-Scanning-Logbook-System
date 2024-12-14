@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import wallpaper from './assets/wallpaper.png';
 import wallpaper2 from './assets/wallpaper2.png';
-import logo from './assets/logo.png';
-import logotitle from './assets/logotitle.png';
+import BuksuLogo from './components/BuksuLogo';
 import './admin/Login.css';
 
 function Homepage() {
@@ -12,10 +11,12 @@ function Homepage() {
 
     useEffect(() => {
         // Clear any existing auth states
-        localStorage.removeItem('adminLoggedIn');
-        localStorage.removeItem('admin');
-        localStorage.removeItem('studentLoggedIn');
-        localStorage.removeItem('student');
+        fetch('http://localhost:5000/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+        }).catch(error => {
+            console.error('Error clearing session:', error);
+        });
 
         setIsVisible(true);
     }, []);
@@ -34,36 +35,11 @@ function Homepage() {
                 {/* Left Side - Image */}
                 <div
                     style={{
-                        backgroundImage: `url(${wallpaper2})`
+                        backgroundImage: `url(${wallpaper2})`,
+                        position: 'relative'
                     }}
                 >
-                    <div
-                        className="position-absolute top-50 start-50 translate-middle bg-white rounded d-flex flex-column justify-content-center align-items-center"
-                        style={{
-                            width: '240px',
-                            height: '280px'
-                        }}
-                    >
-                        <img
-                            src={logotitle}
-                            alt="Logo Title"
-                            style={{
-                                maxWidth: '200px',
-                                height: 'auto',
-                                marginBottom: '1rem'
-                            }}
-                            className="img-fluid"
-                        />
-                        <img
-                            src={logo}
-                            alt="Logo"
-                            style={{
-                                maxWidth: '160px',
-                                height: 'auto'
-                            }}
-                            className="img-fluid"
-                        />
-                    </div>
+                    <BuksuLogo />
                 </div>
 
                 {/* Right Side - Content */}
@@ -74,40 +50,36 @@ function Homepage() {
                         <p className="text-muted">Please select your login type</p>
                     </div>
 
-                    <div className="d-flex flex-column gap-4 justify-content-center align-items-center mb-5">
+                    <div className="d-flex gap-4 justify-content-center align-items-center mb-5">
                         <Link
                             to="/admin/login"
-                            className="btn btn-primary d-inline-flex align-items-center"
+                            className="btn btn-primary d-flex flex-column align-items-center justify-content-center"
                             style={{
-                                borderRadius: '8px',
-                                fontSize: '1.25rem',
-                                padding: '1rem 2.5rem',
+                                width: '200px',
+                                height: '200px',
+                                borderRadius: '12px',
                                 transition: 'all 0.3s ease',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                minWidth: '300px',
-                                justifyContent: 'center',
-                                height: '60px'
                             }}
                         >
-                            <i className="bi bi-shield-lock-fill me-3" style={{ fontSize: '1.4rem' }}></i>
-                            <span>Admin Login</span>
+                            <i className="bi bi-shield-lock-fill mb-3" style={{ fontSize: '2.5rem' }}></i>
+                            <span style={{ fontSize: '1.25rem' }}>Admin</span>
+                            <span style={{ fontSize: '1.25rem' }}>Login</span>
                         </Link>
                         <Link
                             to="/student/login"
-                            className="btn btn-success d-inline-flex align-items-center"
+                            className="btn btn-success d-flex flex-column align-items-center justify-content-center"
                             style={{
-                                borderRadius: '8px',
-                                fontSize: '1.25rem',
-                                padding: '1rem 2.5rem',
+                                width: '200px',
+                                height: '200px',
+                                borderRadius: '12px',
                                 transition: 'all 0.3s ease',
                                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                minWidth: '300px',
-                                justifyContent: 'center',
-                                height: '60px'
                             }}
                         >
-                            <i className="bi bi-person-circle me-3" style={{ fontSize: '1.4rem' }}></i>
-                            <span>Student Login</span>
+                            <i className="bi bi-person-circle mb-3" style={{ fontSize: '2.5rem' }}></i>
+                            <span style={{ fontSize: '1.25rem' }}>Student</span>
+                            <span style={{ fontSize: '1.25rem' }}>Login</span>
                         </Link>
                     </div>
 

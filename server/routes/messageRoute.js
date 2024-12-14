@@ -1,11 +1,13 @@
 import express from 'express';
-import { getMessages, getMessage, deleteMessage, updateMessage } from '../controllers/messageController.js';
+import { getMessages, getMessage, deleteMessage, updateMessage, createMessage } from '../controllers/messageController.js';
 
 const router = express.Router();
 
 router.get('/', getMessages);
 
 router.get('/:id', getMessage);
+
+router.post('/', createMessage);
 
 router.delete('/:id', deleteMessage);
 

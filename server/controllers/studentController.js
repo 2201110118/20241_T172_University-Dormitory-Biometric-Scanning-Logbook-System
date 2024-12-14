@@ -1,7 +1,6 @@
 import Students from '../models/student.js';
 import Messages from '../models/message.js';
 import Logs from '../models/log.js';
-import axios from 'axios';
 
 const getStudents = async (req, res) => {
   try {
@@ -26,34 +25,9 @@ const getStudent = async (req, res) => {
   }
 };
 
-const verifyRecaptcha = async (token) => {
-  try {
-    const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
-      params: {
-        secret: process.env.RECAPTCHA_SECRET_KEY,
-        response: token
-      }
-    });
-    return response.data.success;
-  } catch (error) {
-    console.error('reCAPTCHA verification error:', error);
-    return false;
-  }
-};
-
 const postStudent = async (req, res) => {
   try {
-    const { captchaToken, confirmPassword, ...studentData } = req.body;
-
-    // Verify reCAPTCHA
-    if (!captchaToken) {
-      return res.status(400).json({ message: 'Please complete the reCAPTCHA verification' });
-    }
-
-    const isValidCaptcha = await verifyRecaptcha(captchaToken);
-    if (!isValidCaptcha) {
-      return res.status(400).json({ message: 'Invalid reCAPTCHA. Please try again.' });
-    }
+    const { confirmPassword, ...studentData } = req.body;
 
     // Add default values
     studentData.registeredaccount = false;
