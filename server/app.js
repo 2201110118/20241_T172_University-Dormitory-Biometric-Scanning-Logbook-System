@@ -44,7 +44,7 @@ app.use(express.json());
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
-// Import route modules for handling student and admin routes
+// Import route modules
 import studentRoute from './routes/studentRoute.js';
 import adminRoute from './routes/adminRoute.js';
 import messageRoute from './routes/messageRoute.js';
@@ -52,27 +52,30 @@ import logRoute from './routes/logRoute.js';
 import loginRouteAdmin from './routes/loginRouteAdmin.js';
 import loginRouteStudent from './routes/loginRouteStudent.js';
 import authRoute from './routes/authRoute.js';
+import smsRoutes from './routes/sms.routes.js';
+import emailRoutes from './routes/email.routes.js';
 
 // Define API routes
-// Auth routes
-app.use('/api/auth', authRoute);
-// Admin API routes
-app.use('/api/admin', adminRoute);
-// Student API routes  
 app.use('/api/student', studentRoute);
-
+app.use('/api/admin', adminRoute);
+app.use('/api/auth', authRoute);
 app.use('/api/message', messageRoute);
 app.use('/api/log', logRoute);
+app.use('/api/sms', smsRoutes);
+app.use('/api/email', emailRoutes);
 
+// Login routes - keeping both patterns for backward compatibility
 app.use('/api/login', loginRouteAdmin);
 app.use('/api/login', loginRouteStudent);
+app.use('/api/loginAdmin', loginRouteAdmin);    // Legacy route
+app.use('/api/loginStudent', loginRouteStudent); // Legacy route
 
-// Connect to the MongoDB database using the URI from environment variables
+// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('MongoDB connected successfully'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-// Start the server and listen on the defined port
+// Start the server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });

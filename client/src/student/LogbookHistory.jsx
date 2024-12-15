@@ -101,26 +101,26 @@ function StudentLogbookHistory() {
             name: 'Log ID',
             selector: row => row.logid,
             sortable: true,
-            width: '20%',
+            width: '25%',
         },
         {
             name: 'Log Type',
             selector: row => row.logType,
             sortable: true,
-            width: '20%',
+            width: '25%',
         },
         {
             name: 'Date',
             selector: row => row.timestamp?.date || 'N/A',
             sortable: true,
-            width: '20%',
+            width: '25%',
         },
         {
             name: 'Time',
             selector: row => row.timestamp?.time || 'N/A',
             sortable: true,
-            width: '20%',
-            right: true,
+            width: '25%',
+            right: true
         }
     ];
 

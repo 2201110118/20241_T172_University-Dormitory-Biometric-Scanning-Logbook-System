@@ -301,6 +301,12 @@ function AdminDashboard() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminMessage" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-envelope-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Message</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
                                     <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Generate Report</span>
@@ -309,7 +315,7 @@ function AdminDashboard() {
                                 <li className="nav-item border-bottom border-white">
                                     <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                        <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
                                 </li>
                             </ul>

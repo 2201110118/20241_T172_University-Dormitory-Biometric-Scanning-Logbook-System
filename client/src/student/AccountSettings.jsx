@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StudentHeader from '../components/StudentHeader';
@@ -31,6 +31,44 @@ function StudentAccountSettings() {
     const [showCurrentPasswordUsername, setShowCurrentPasswordUsername] = useState(false);
     const [isPasswordLoading, setIsPasswordLoading] = useState(false);
     const [isNameLoading, setIsNameLoading] = useState(false);
+    const [contacts, setContacts] = useState({
+        currentPassword: '',
+        family: {
+            contactNumber: '',
+            gmail: ''
+        },
+        guardian: {
+            contactNumber: '',
+            gmail: ''
+        },
+        friend: {
+            contactNumber: '',
+            gmail: ''
+        }
+    });
+    const [contactMessage, setContactMessage] = useState({ text: '', type: '' });
+    const [showContactConfirmModal, setShowContactConfirmModal] = useState(false);
+    const [pendingContacts, setPendingContacts] = useState(null);
+    const [isContactLoading, setIsContactLoading] = useState(false);
+    const [studentInfo, setStudentInfo] = useState(null);
+
+    useEffect(() => {
+        const fetchStudentInfo = async () => {
+            try {
+                if (!user?.studentid) return;
+                
+                const response = await fetch(`http://localhost:5000/api/student/studentid/${user.studentid}`);
+                const data = await response.json();
+                if (response.ok) {
+                    setStudentInfo(data);
+                }
+            } catch (error) {
+                console.error('Error fetching student info:', error);
+            }
+        };
+
+        fetchStudentInfo();
+    }, [user?.studentid]);
 
     const handlePasswordChange = (e) => {
         setPasswords({
@@ -186,6 +224,97 @@ function StudentAccountSettings() {
         }
     };
 
+    const handleContactChange = (e) => {
+        const [category, field] = e.target.name.split('.');
+        if (category === 'currentPassword') {
+            setContacts(prev => ({
+                ...prev,
+                currentPassword: e.target.value
+            }));
+        } else {
+            setContacts(prev => ({
+                ...prev,
+                [category]: {
+                    ...prev[category],
+                    [field]: e.target.value
+                }
+            }));
+        }
+    };
+
+    const handleContactSubmit = async (e) => {
+        e.preventDefault();
+        setPendingContacts(contacts);
+        setShowContactConfirmModal(true);
+    };
+
+    const handleConfirmContactChange = async () => {
+        setIsContactLoading(true);
+        try {
+            if (!user?.studentid) {
+                throw new Error('Student ID not found. Please log in again.');
+            }
+
+            const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contacts: {
+                        family: {
+                            contactNumber: pendingContacts.family.contactNumber ? 
+                                Number(pendingContacts.family.contactNumber) : undefined,
+                            gmail: pendingContacts.family.gmail
+                        },
+                        guardian: {
+                            contactNumber: pendingContacts.guardian.contactNumber ? 
+                                Number(pendingContacts.guardian.contactNumber) : undefined,
+                            gmail: pendingContacts.guardian.gmail
+                        },
+                        friend: {
+                            contactNumber: pendingContacts.friend.contactNumber ? 
+                                Number(pendingContacts.friend.contactNumber) : undefined,
+                            gmail: pendingContacts.friend.gmail
+                        }
+                    }
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setShowContactConfirmModal(false);
+                if (response.status === 401) {
+                    setContactMessage({ text: 'Current password is incorrect', type: 'danger' });
+                } else if (response.status === 400) {
+                    setContactMessage({ text: data.message, type: 'danger' });
+                } else {
+                    throw new Error(data.message || 'Error updating contact information');
+                }
+                return;
+            }
+
+            setContactMessage({ text: 'Contact information updated successfully!', type: 'success' });
+            setContacts({
+                currentPassword: '',
+                family: { contactNumber: '', gmail: '' },
+                guardian: { contactNumber: '', gmail: '' },
+                friend: { contactNumber: '', gmail: '' }
+            });
+            setShowContactConfirmModal(false);
+        } catch (error) {
+            console.error('Full error:', error);
+            setContactMessage({
+                text: `Error updating contact information: ${error.message}`,
+                type: 'danger'
+            });
+            setShowContactConfirmModal(false);
+        } finally {
+            setIsContactLoading(false);
+        }
+    };
+
     return (
         <>
             <StudentHeader />
@@ -247,6 +376,75 @@ function StudentAccountSettings() {
                                 </div>
 
                                 <div className="row g-4">
+                                    {/* Student Information Card */}
+                                    <div className="col-12">
+                                        <div className="card border-0 shadow-sm">
+                                            <div className="card-header bg-transparent border-0 py-3">
+                                                <h5 className="mb-0 fw-bold">
+                                                    <i className="bi bi-person-badge me-2"></i>
+                                                    Student Information
+                                                </h5>
+                                            </div>
+                                            <div className="card-body">
+                                                {!studentInfo ? (
+                                                    <div className="text-center py-5">
+                                                        <div className="spinner-border text-primary" role="status">
+                                                            <span className="visually-hidden">Loading...</span>
+                                                        </div>
+                                                        <p className="mt-2 text-muted">Loading student information...</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="row">
+                                                        <div className="col-md-6">
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Student ID:</label>
+                                                                <p className="mb-0">{studentInfo.studentid}</p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Full Name:</label>
+                                                                <p className="mb-0">
+                                                                    {`${studentInfo.fullname?.firstname} ${studentInfo.fullname?.lastname}`}
+                                                                </p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Gmail:</label>
+                                                                <p className="mb-0">{studentInfo.gmail}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-md-6">
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Room Number:</label>
+                                                                <p className="mb-0">{studentInfo.roomnumber || 'Not assigned'}</p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Registration Request Date:</label>
+                                                                <p className="mb-0">
+                                                                    {studentInfo.accountStatus?.submissionDate ? 
+                                                                        new Date(studentInfo.accountStatus.submissionDate).toLocaleDateString('en-US', {
+                                                                            year: 'numeric',
+                                                                            month: 'long',
+                                                                            day: 'numeric'
+                                                                        }) : 'Not available'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Registration Confirmation Date:</label>
+                                                                <p className="mb-0">
+                                                                    {studentInfo.accountStatus?.verificationDate ? 
+                                                                        new Date(studentInfo.accountStatus.verificationDate).toLocaleDateString('en-US', {
+                                                                            year: 'numeric',
+                                                                            month: 'long',
+                                                                            day: 'numeric'
+                                                                        }) : 'Not yet confirmed'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Change Password Card */}
                                     <div className="col-12 col-lg-6">
                                         <div className="card border-0 shadow-sm">
@@ -460,6 +658,166 @@ function StudentAccountSettings() {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Contact Information Card */}
+                                    <div className="col-12">
+                                        <div className="card border-0 shadow-sm">
+                                            <div className="card-header bg-transparent border-0 py-3">
+                                                <h5 className="mb-0 fw-bold">
+                                                    <i className="bi bi-telephone me-2"></i>
+                                                    Current Contact Information
+                                                </h5>
+                                            </div>
+                                            <div className="card-body">
+                                                {!studentInfo ? (
+                                                    <div className="text-center py-5">
+                                                        <div className="spinner-border text-primary" role="status">
+                                                            <span className="visually-hidden">Loading...</span>
+                                                        </div>
+                                                        <p className="mt-2 text-muted">Loading contact information...</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="row">
+                                                        <div className="col-md-4">
+                                                            <h6 className="mb-3">Family Contact</h6>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Contact Number:</label>
+                                                                <p className="mb-0">{studentInfo.contacts?.family?.contactNumber || 'Not set'}</p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Gmail:</label>
+                                                                <p className="mb-0">{studentInfo.contacts?.family?.gmail || 'Not set'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-md-4">
+                                                            <h6 className="mb-3">Guardian Contact</h6>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Contact Number:</label>
+                                                                <p className="mb-0">{studentInfo.contacts?.guardian?.contactNumber || 'Not set'}</p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Gmail:</label>
+                                                                <p className="mb-0">{studentInfo.contacts?.guardian?.gmail || 'Not set'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-md-4">
+                                                            <h6 className="mb-3">Friend Contact</h6>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Contact Number:</label>
+                                                                <p className="mb-0">{studentInfo.contacts?.friend?.contactNumber || 'Not set'}</p>
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="fw-bold">Gmail:</label>
+                                                                <p className="mb-0">{studentInfo.contacts?.friend?.gmail || 'Not set'}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Contact Information Edit Card */}
+                                    <div className="col-12">
+                                        <div className="card border-0 shadow-sm">
+                                            <div className="card-header bg-transparent border-0 py-3">
+                                                <h5 className="mb-0 fw-bold">
+                                                    <i className="bi bi-telephone me-2"></i>
+                                                    Contact Information
+                                                </h5>
+                                            </div>
+                                            <div className="card-body">
+                                                {contactMessage.text && (
+                                                    <div className={`alert alert-${contactMessage.type}`} role="alert">
+                                                        {contactMessage.text}
+                                                    </div>
+                                                )}
+                                                <form onSubmit={handleContactSubmit}>
+                                                    <div className="row">
+                                                        <div className="col-md-4">
+                                                            <h6 className="mb-3">Family Contact</h6>
+                                                            <div className="mb-3">
+                                                                <label className="form-label">Contact Number</label>
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control"
+                                                                    name="family.contactNumber"
+                                                                    placeholder="Enter family contact number"
+                                                                    value={contacts.family.contactNumber}
+                                                                    onChange={handleContactChange}
+                                                                />
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="form-label">Gmail</label>
+                                                                <input
+                                                                    type="email"
+                                                                    className="form-control"
+                                                                    name="family.gmail"
+                                                                    placeholder="Enter family gmail"
+                                                                    value={contacts.family.gmail}
+                                                                    onChange={handleContactChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-md-4">
+                                                            <h6 className="mb-3">Guardian Contact</h6>
+                                                            <div className="mb-3">
+                                                                <label className="form-label">Contact Number</label>
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control"
+                                                                    name="guardian.contactNumber"
+                                                                    placeholder="Enter guardian contact number"
+                                                                    value={contacts.guardian.contactNumber}
+                                                                    onChange={handleContactChange}
+                                                                />
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="form-label">Gmail</label>
+                                                                <input
+                                                                    type="email"
+                                                                    className="form-control"
+                                                                    name="guardian.gmail"
+                                                                    placeholder="Enter guardian gmail"
+                                                                    value={contacts.guardian.gmail}
+                                                                    onChange={handleContactChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-md-4">
+                                                            <h6 className="mb-3">Friend Contact</h6>
+                                                            <div className="mb-3">
+                                                                <label className="form-label">Contact Number</label>
+                                                                <input
+                                                                    type="text"
+                                                                    className="form-control"
+                                                                    name="friend.contactNumber"
+                                                                    placeholder="Enter friend contact number"
+                                                                    value={contacts.friend.contactNumber}
+                                                                    onChange={handleContactChange}
+                                                                />
+                                                            </div>
+                                                            <div className="mb-3">
+                                                                <label className="form-label">Gmail</label>
+                                                                <input
+                                                                    type="email"
+                                                                    className="form-control"
+                                                                    name="friend.gmail"
+                                                                    placeholder="Enter friend gmail"
+                                                                    value={contacts.friend.gmail}
+                                                                    onChange={handleContactChange}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button type="submit" className="btn btn-primary">
+                                                        <i className="bi bi-check2-circle me-2"></i>
+                                                        Update Contact Information
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -557,6 +915,59 @@ function StudentAccountSettings() {
                                         onClick={handleConfirmNameChange}
                                         disabled={isNameLoading}>
                                         {isNameLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Updating...
+                                            </>
+                                        ) : (
+                                            'Confirm Change'
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
+                </>
+            )}
+
+            {/* Contact Change Confirmation Modal */}
+            {showContactConfirmModal && (
+                <>
+                    <div className="modal fade show"
+                        style={{
+                            display: 'block',
+                            zIndex: 1060
+                        }}
+                        tabIndex="-1"
+                        role="dialog"
+                        aria-labelledby="contactConfirmModalLabel"
+                        aria-hidden="true">
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title" id="contactConfirmModalLabel">Confirm Contact Information Change</h5>
+                                    <button type="button"
+                                        className="btn-close"
+                                        onClick={() => setShowContactConfirmModal(false)}
+                                        aria-label="Close">
+                                    </button>
+                                </div>
+                                <div className="modal-body">
+                                    Are you sure you want to update your contact information?
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowContactConfirmModal(false)}
+                                        disabled={isContactLoading}>
+                                        Cancel
+                                    </button>
+                                    <button type="button"
+                                        className="btn btn-primary d-flex align-items-center"
+                                        onClick={handleConfirmContactChange}
+                                        disabled={isContactLoading}>
+                                        {isContactLoading ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                 Updating...
