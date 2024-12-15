@@ -1,5 +1,5 @@
 # Introduction
-<div align="center"><img src="https://buksu.edu.ph/wp-content/uploads/2020/05/buksu-logo-min-1024x1024.png" alt="Logo" width="200" height="200"></div>
+<div align="center"><img src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png" alt="Buksu Logo" width="200" height="200"></div>
 
 ## University Dormitory Biometric Scanning Logbook System
 
@@ -13,9 +13,11 @@ We are the ZetaTech Biometric :rocket:, and this is our team:
 
 | Names | Roles |
 |-------|-------|
-|Louise Clark Publico| Full Stack Developer :computer: |
-|Joshua Camacho| Full Stack Developer :computer:|
-|Alexa Gin Jagape| Front End :pencil2: |
-|Wrencil Caballero| Back End :cd: |
+| Louise Clark Publico | Full Stack Developer :computer: |
+| Joshua Camacho | Full Stack Developer :computer: |
+| Alexa Gin Jagape | Front End Developer :pencil2: |
+| Wrencil Caballero | Back End Developer :cd: |
 
 # How to run the system?
+
+__The how to run the system will change over time.__
