@@ -11,6 +11,7 @@ function StudentDashboard() {
     const [studentName, setStudentName] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [messages, setMessages] = useState([]);
+    const [logs, setLogs] = useState([]);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
@@ -57,10 +58,45 @@ function StudentDashboard() {
                 }
             } catch (error) {
                 console.error(`Error fetching messages: ${error}`);
+            } finally {
+                setIsLoading(false);
             }
         };
 
         fetchMessages();
+    }, []);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                // First get the student's ID from the session
+                const sessionResponse = await fetch("http://localhost:5000/api/auth/check-session", {
+                    credentials: 'include'
+                });
+                const sessionData = await sessionResponse.json();
+
+                if (sessionData.isAuthenticated && sessionData.user) {
+                    // Then fetch all logs
+                    const response = await fetch('http://localhost:5000/api/log/');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+
+                    // Filter logs for the current student
+                    const studentLogs = data.filter(log => 
+                        log.student?.studentid === sessionData.user.studentid && !log.archive
+                    );
+
+                    const sortedData = studentLogs.sort((a, b) => 
+                        new Date(b.timestamp.date) - new Date(a.timestamp.date)
+                    ).slice(0, 5); // Only take the 5 most recent logs
+                    setLogs(sortedData);
+                }
+            } catch (error) {
+                console.error(`Error fetching logs: ${error}`);
+            }
+        };
+
+        fetchLogs();
     }, []);
 
     useEffect(() => {
@@ -97,6 +133,25 @@ function StudentDashboard() {
             setIsExiting(false);
         }
     };
+
+    const logColumns = [
+        {
+            name: 'Log Type',
+            selector: row => row.logType,
+            width: '30%',
+        },
+        {
+            name: 'Date',
+            selector: row => row.timestamp?.date || 'N/A',
+            width: '35%',
+        },
+        {
+            name: 'Time',
+            selector: row => row.timestamp?.time || 'N/A',
+            width: '35%',
+            right: true,
+        }
+    ];
 
     return (
         <>
@@ -245,13 +300,24 @@ function StudentDashboard() {
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                                 <h5 className="mb-0">Recent Logs</h5>
-                                                <Link to="/student/logbook" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
-                                                    <i className="bi bi-clock-history me-2"></i>
-                                                    <span>View All Logs</span>
+                                                <Link to="/StudentLogbookHistory" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
+                                                    View All
+                                                    <i className="bi bi-arrow-right ms-2"></i>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
-                                                {/* Table content will be added later */}
+                                                <DataTable
+                                                    columns={logColumns}
+                                                    data={logs}
+                                                    customStyles={customTableStyles}
+                                                    responsive
+                                                    highlightOnHover
+                                                    striped
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No logs found"
+                                                    dense
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -300,6 +366,7 @@ function StudentDashboard() {
                                                             cell: row => (
                                                                 <span className="badge bg-warning">Pending</span>
                                                             ),
+                                                            right: true,
                                                         }
                                                     ]}
                                                     data={messages
@@ -312,6 +379,8 @@ function StudentDashboard() {
                                                     noDataComponent="No pending requests found"
                                                     pagination={false}
                                                     dense
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
                                                 />
                                             </div>
                                         </div>
@@ -366,6 +435,7 @@ function StudentDashboard() {
                                                             cell: row => (
                                                                 <span className="badge bg-success">Confirmed</span>
                                                             ),
+                                                            right: true,
                                                         }
                                                     ]}
                                                     data={messages
@@ -378,6 +448,8 @@ function StudentDashboard() {
                                                     noDataComponent="No confirmed requests found"
                                                     pagination={false}
                                                     dense
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
                                                 />
                                             </div>
                                         </div>

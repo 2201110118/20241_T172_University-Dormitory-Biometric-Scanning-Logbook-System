@@ -79,4 +79,36 @@ const updateLog = async (req, res) => {
     }
 };
 
-export { getLogs, getLog, deleteLog, updateLog };
+const createLog = async (req, res) => {
+    try {
+        // Get all logs to determine the next logid
+        const logs = await Logs.find();
+        const maxLogId = logs.reduce((max, log) => Math.max(max, log.logid || 0), 0);
+        const newLogId = maxLogId + 1;
+
+        const newLog = new Logs({
+            ...req.body,
+            logid: newLogId,
+            timestamp: {
+                date: new Date().toLocaleDateString('en-US'),
+                time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+            }
+        });
+
+        const savedLog = await newLog.save();
+
+        // Manually populate student data
+        const student = await mongoose.model('Students').findOne({ studentid: savedLog.student });
+        const logWithStudent = {
+            ...savedLog.toObject(),
+            student: student || null
+        };
+
+        res.status(201).json(logWithStudent);
+    } catch (error) {
+        console.error('Error creating log:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+export { getLogs, getLog, deleteLog, updateLog, createLog };

@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import AdminHeader from '../components/AdminHeader';
+import StudentHeader from '../components/StudentHeader';
 
-function AccountSettings() {
+function StudentAccountSettings() {
     const { user } = useAuth();
     const [passwords, setPasswords] = useState({
         currentPassword: '',
@@ -11,24 +11,26 @@ function AccountSettings() {
         confirmPassword: ''
     });
 
-    const [username, setUsername] = useState({
+    const [name, setName] = useState({
         currentPassword: '',
-        newUsername: '',
-        confirmUsername: ''
+        newFirstName: '',
+        newLastName: '',
+        confirmFirstName: '',
+        confirmLastName: ''
     });
 
     const [message, setMessage] = useState({ text: '', type: '' });
-    const [usernameMessage, setUsernameMessage] = useState({ text: '', type: '' });
+    const [nameMessage, setNameMessage] = useState({ text: '', type: '' });
     const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [showUsernameConfirmModal, setShowUsernameConfirmModal] = useState(false);
+    const [showNameConfirmModal, setShowNameConfirmModal] = useState(false);
     const [pendingPasswords, setPendingPasswords] = useState(null);
-    const [pendingUsername, setPendingUsername] = useState(null);
+    const [pendingName, setPendingName] = useState(null);
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [showCurrentPasswordUsername, setShowCurrentPasswordUsername] = useState(false);
     const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-    const [isUsernameLoading, setIsUsernameLoading] = useState(false);
+    const [isNameLoading, setIsNameLoading] = useState(false);
 
     const handlePasswordChange = (e) => {
         setPasswords({
@@ -37,9 +39,9 @@ function AccountSettings() {
         });
     };
 
-    const handleUsernameChange = (e) => {
-        setUsername({
-            ...username,
+    const handleNameChange = (e) => {
+        setName({
+            ...name,
             [e.target.name]: e.target.value
         });
     };
@@ -56,26 +58,26 @@ function AccountSettings() {
         setShowConfirmModal(true);
     };
 
-    const handleUsernameSubmit = async (e) => {
+    const handleNameSubmit = async (e) => {
         e.preventDefault();
 
-        if (username.newUsername !== username.confirmUsername) {
-            setUsernameMessage({ text: 'New usernames do not match!', type: 'danger' });
+        if (name.newFirstName !== name.confirmFirstName || name.newLastName !== name.confirmLastName) {
+            setNameMessage({ text: 'New names do not match!', type: 'danger' });
             return;
         }
 
-        setPendingUsername(username);
-        setShowUsernameConfirmModal(true);
+        setPendingName(name);
+        setShowNameConfirmModal(true);
     };
 
     const handleConfirmChange = async () => {
         setIsPasswordLoading(true);
         try {
-            if (!user?.id) {
-                throw new Error('Admin ID not found. Please log in again.');
+            if (!user?.studentid) {
+                throw new Error('Student ID not found. Please log in again.');
             }
 
-            const response = await fetch(`http://localhost:5000/api/admin/${user.id}`, {
+            const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -117,65 +119,78 @@ function AccountSettings() {
         }
     };
 
-    const handleConfirmUsernameChange = async () => {
-        setIsUsernameLoading(true);
+    const handleConfirmNameChange = async () => {
+        setIsNameLoading(true);
         try {
-            if (!user?.id) {
-                throw new Error('Admin ID not found. Please log in again.');
+            if (!user?.studentid) {
+                throw new Error('Student ID not found. Please log in again.');
             }
 
-            const response = await fetch(`http://localhost:5000/api/admin/${user.id}`, {
+            const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    currentPassword: pendingUsername.currentPassword,
-                    username: pendingUsername.newUsername
+                    fullname: {
+                        firstname: pendingName.newFirstName,
+                        lastname: pendingName.newLastName
+                    }
                 })
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                setShowUsernameConfirmModal(false);
+                setShowNameConfirmModal(false);
                 if (response.status === 401) {
-                    setUsernameMessage({ text: 'Current password is incorrect', type: 'danger' });
+                    setNameMessage({ text: 'Current password is incorrect', type: 'danger' });
                 } else if (response.status === 400) {
-                    setUsernameMessage({ text: data.message, type: 'danger' });
+                    setNameMessage({ text: data.message, type: 'danger' });
                 } else {
-                    throw new Error(data.message || 'Error updating username');
+                    throw new Error(data.message || 'Error updating name');
                 }
                 return;
             }
 
-            setUsernameMessage({ text: 'Username updated successfully!', type: 'success' });
-            setUsername({
+            setNameMessage({ text: 'Name updated successfully!', type: 'success' });
+            setName({
                 currentPassword: '',
-                newUsername: '',
-                confirmUsername: ''
+                newFirstName: '',
+                newLastName: '',
+                confirmFirstName: '',
+                confirmLastName: ''
             });
-            setShowUsernameConfirmModal(false);
+            setShowNameConfirmModal(false);
 
-            // Update the username in auth context
-            window.dispatchEvent(new Event('authStateChange'));
+            // Update the name in session storage
+            const currentStudent = JSON.parse(sessionStorage.getItem('student'));
+            if (currentStudent) {
+                currentStudent.fullname = {
+                    firstname: pendingName.newFirstName,
+                    lastname: pendingName.newLastName
+                };
+                sessionStorage.setItem('student', JSON.stringify(currentStudent));
+                // Dispatch custom event to update header
+                window.dispatchEvent(new Event('nameChanged'));
+            }
         } catch (error) {
             console.error('Full error:', error);
-            setUsernameMessage({
-                text: `Error updating username: ${error.message}`,
+            setNameMessage({
+                text: `Error updating name: ${error.message}`,
                 type: 'danger'
             });
-            setShowUsernameConfirmModal(false);
+            setShowNameConfirmModal(false);
         } finally {
-            setIsUsernameLoading(false);
+            setIsNameLoading(false);
         }
     };
 
     return (
         <>
-            <AdminHeader />
+            <StudentHeader />
             <div className="d-flex flex-column min-vh-100">
-                <div style={{ height: '64px' }}></div> {/* Spacer div to compensate for fixed header */}
+                <div style={{ height: '64px' }}></div>
                 <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
                     <div className="d-flex" style={{ minHeight: 'calc(100vh - 64px)' }}>
                         <nav className="sidebar bg-dark"
@@ -190,39 +205,27 @@ function AccountSettings() {
                             }}>
                             <ul className="flex-column text-white text-decoration-none navbar-nav">
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Dashboard</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Account Management</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Night Pass</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentLogbookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Logbook History</span>
+                                        <span className="ms-2 fw-bold fs-6">My Logbook History</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Generate Report</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                        <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
                                 </li>
                             </ul>
@@ -353,33 +356,33 @@ function AccountSettings() {
                                         </div>
                                     </div>
 
-                                    {/* Change Username Card */}
+                                    {/* Change Name Card */}
                                     <div className="col-12 col-lg-6">
                                         <div className="card border-0 shadow-sm">
                                             <div className="card-header bg-transparent border-0 py-3">
                                                 <h5 className="mb-0 fw-bold">
                                                     <i className="bi bi-person me-2"></i>
-                                                    Change Username
+                                                    Change Name
                                                 </h5>
                                             </div>
                                             <div className="card-body">
-                                                {usernameMessage.text && (
-                                                    <div className={`alert alert-${usernameMessage.type}`} role="alert">
-                                                        {usernameMessage.text}
+                                                {nameMessage.text && (
+                                                    <div className={`alert alert-${nameMessage.type}`} role="alert">
+                                                        {nameMessage.text}
                                                     </div>
                                                 )}
-                                                <form onSubmit={handleUsernameSubmit}>
+                                                <form onSubmit={handleNameSubmit}>
                                                     <div className="mb-3">
-                                                        <label htmlFor="currentPasswordUsername" className="form-label">Current Password</label>
+                                                        <label htmlFor="currentPasswordName" className="form-label">Current Password</label>
                                                         <div className="input-group">
                                                             <input
                                                                 type={showCurrentPasswordUsername ? "text" : "password"}
                                                                 className="form-control"
-                                                                id="currentPasswordUsername"
+                                                                id="currentPasswordName"
                                                                 placeholder="Enter current password"
                                                                 name="currentPassword"
-                                                                value={username.currentPassword}
-                                                                onChange={handleUsernameChange}
+                                                                value={name.currentPassword}
+                                                                onChange={handleNameChange}
                                                                 required
                                                                 minLength="6"
                                                             />
@@ -398,34 +401,60 @@ function AccountSettings() {
                                                         </div>
                                                     </div>
                                                     <div className="mb-3">
-                                                        <label htmlFor="newUsername" className="form-label">New Username</label>
+                                                        <label htmlFor="newFirstName" className="form-label">New First Name</label>
                                                         <input
                                                             type="text"
                                                             className="form-control"
-                                                            id="newUsername"
-                                                            name="newUsername"
-                                                            placeholder="Enter new username"
-                                                            value={username.newUsername}
-                                                            onChange={handleUsernameChange}
+                                                            id="newFirstName"
+                                                            name="newFirstName"
+                                                            placeholder="Enter new first name"
+                                                            value={name.newFirstName}
+                                                            onChange={handleNameChange}
                                                             required
                                                         />
                                                     </div>
                                                     <div className="mb-3">
-                                                        <label htmlFor="confirmUsername" className="form-label">Confirm New Username</label>
+                                                        <label htmlFor="newLastName" className="form-label">New Last Name</label>
                                                         <input
                                                             type="text"
                                                             className="form-control"
-                                                            id="confirmUsername"
-                                                            name="confirmUsername"
-                                                            placeholder="Confirm new username"
-                                                            value={username.confirmUsername}
-                                                            onChange={handleUsernameChange}
+                                                            id="newLastName"
+                                                            name="newLastName"
+                                                            placeholder="Enter new last name"
+                                                            value={name.newLastName}
+                                                            onChange={handleNameChange}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="mb-3">
+                                                        <label htmlFor="confirmFirstName" className="form-label">Confirm First Name</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            id="confirmFirstName"
+                                                            name="confirmFirstName"
+                                                            placeholder="Confirm new first name"
+                                                            value={name.confirmFirstName}
+                                                            onChange={handleNameChange}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="mb-3">
+                                                        <label htmlFor="confirmLastName" className="form-label">Confirm Last Name</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            id="confirmLastName"
+                                                            name="confirmLastName"
+                                                            placeholder="Confirm new last name"
+                                                            value={name.confirmLastName}
+                                                            onChange={handleNameChange}
                                                             required
                                                         />
                                                     </div>
                                                     <button type="submit" className="btn btn-primary">
                                                         <i className="bi bi-check2-circle me-2"></i>
-                                                        Change Username
+                                                        Change Name
                                                     </button>
                                                 </form>
                                             </div>
@@ -491,8 +520,8 @@ function AccountSettings() {
                 </>
             )}
 
-            {/* Username Change Confirmation Modal */}
-            {showUsernameConfirmModal && (
+            {/* Name Change Confirmation Modal */}
+            {showNameConfirmModal && (
                 <>
                     <div className="modal fade show"
                         style={{
@@ -501,33 +530,33 @@ function AccountSettings() {
                         }}
                         tabIndex="-1"
                         role="dialog"
-                        aria-labelledby="usernameConfirmModalLabel"
+                        aria-labelledby="nameConfirmModalLabel"
                         aria-hidden="true">
                         <div className="modal-dialog modal-dialog-centered">
                             <div className="modal-content">
                                 <div className="modal-header">
-                                    <h5 className="modal-title" id="usernameConfirmModalLabel">Confirm Username Change</h5>
+                                    <h5 className="modal-title" id="nameConfirmModalLabel">Confirm Name Change</h5>
                                     <button type="button"
                                         className="btn-close"
-                                        onClick={() => setShowUsernameConfirmModal(false)}
+                                        onClick={() => setShowNameConfirmModal(false)}
                                         aria-label="Close">
                                     </button>
                                 </div>
                                 <div className="modal-body">
-                                    Are you sure you want to change your username?
+                                    Are you sure you want to change your name?
                                 </div>
                                 <div className="modal-footer">
                                     <button type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowUsernameConfirmModal(false)}
-                                        disabled={isUsernameLoading}>
+                                        onClick={() => setShowNameConfirmModal(false)}
+                                        disabled={isNameLoading}>
                                         Cancel
                                     </button>
                                     <button type="button"
                                         className="btn btn-primary d-flex align-items-center"
-                                        onClick={handleConfirmUsernameChange}
-                                        disabled={isUsernameLoading}>
-                                        {isUsernameLoading ? (
+                                        onClick={handleConfirmNameChange}
+                                        disabled={isNameLoading}>
+                                        {isNameLoading ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                 Updating...
@@ -547,4 +576,4 @@ function AccountSettings() {
     );
 }
 
-export default AccountSettings; 
+export default StudentAccountSettings;

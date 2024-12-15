@@ -1,6 +1,7 @@
 import Students from '../models/student.js';
 import Messages from '../models/message.js';
 import Logs from '../models/log.js';
+import bcrypt from 'bcrypt';
 
 const getStudents = async (req, res) => {
   try {
@@ -51,13 +52,33 @@ const postStudent = async (req, res) => {
 const updateStudent = async (req, res) => {
   try {
     const studentid = req.params.id;
+    const { currentPassword, password, ...updates } = req.body;
 
     if (!studentid) {
       return res.status(400).json({ message: "Student ID is required" });
     }
 
     console.log('Updating student with studentid:', studentid);
-    console.log('Update data:', req.body);
+    console.log('Update data:', { ...updates, hasPassword: !!password });
+
+    // If password update is requested, verify current password
+    if (password) {
+      const student = await Students.findOne({ studentid }).select('+password');
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      // Verify current password
+      const isMatch = await student.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      updates.password = hashedPassword;
+    }
 
     const cleanData = (obj) => {
       const cleaned = {};
@@ -74,15 +95,15 @@ const updateStudent = async (req, res) => {
       return cleaned;
     };
 
-    const updates = cleanData(req.body);
+    const cleanedUpdates = cleanData(updates);
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(cleanedUpdates).length === 0 && !password) {
       return res.status(400).json({ message: "No valid fields to update." });
     }
 
     const updatedStudent = await Students.findOneAndUpdate(
       { studentid: studentid },
-      { $set: updates },
+      { $set: cleanedUpdates },
       {
         new: true,
         runValidators: true,

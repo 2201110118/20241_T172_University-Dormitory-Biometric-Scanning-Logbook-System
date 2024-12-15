@@ -21,6 +21,8 @@ import StudentLogbookHistory from './student/LogbookHistory';
 import StudentLogin from './student/Login';
 import StudentSignup from './student/Signup';
 import StudentNightPass from './student/NightPass';
+import StudentSettings from './student/Settings';
+import StudentAccountSettings from './student/AccountSettings';
 
 // Other Components
 import Homepage from './Homepage';
@@ -91,7 +93,12 @@ const App = () => {
           } />
           <Route path="/StudentSettings" element={
             <ProtectedRoute userType="student" requireAuth={true}>
-              <StudentDashboard />
+              <StudentSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/account-settings" element={
+            <ProtectedRoute userType="student" requireAuth={true}>
+              <StudentAccountSettings />
             </ProtectedRoute>
           } />
 

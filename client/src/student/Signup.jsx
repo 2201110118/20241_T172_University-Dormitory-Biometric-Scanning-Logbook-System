@@ -1,15 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Modal } from 'bootstrap';
+import ReCAPTCHA from "react-google-recaptcha";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
 import BuksuLogo from '../components/BuksuLogo';
 import './StudentAuth.css';
 
+// Debug logging function
+const debugLog = (message, data = null) => {
+    if (import.meta.env.DEV) {
+        console.log(`[reCAPTCHA Client] ${message}`);
+        if (data) {
+            console.log(JSON.stringify(data, null, 2));
+        }
+    }
+};
+
 const StudentSignup = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const googleData = location.state?.googleData;
+    const recaptchaRef = useRef(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorModal, setErrorModal] = useState(null);
@@ -36,7 +48,8 @@ const StudentSignup = () => {
         },
         password: '',
         confirmPassword: '',
-        googleId: googleData?.googleId || null
+        googleId: googleData?.googleId || null,
+        recaptchaToken: ''
     });
 
     const [error, setError] = useState('');
@@ -48,6 +61,14 @@ const StudentSignup = () => {
         setIsVisible(true);
         const modal = new Modal(document.getElementById('errorModal'));
         setErrorModal(modal);
+
+        // Log reCAPTCHA initialization
+        debugLog('reCAPTCHA component initialized');
+        debugLog('Site Key Configuration', {
+            siteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY.substring(0, 10) + '...',
+            environment: import.meta.env.MODE
+        });
+
         return () => {
             setIsVisible(false);
             if (errorModal) {
@@ -87,6 +108,32 @@ const StudentSignup = () => {
         }
     };
 
+    const handleRecaptchaChange = (token) => {
+        debugLog(token ? 'reCAPTCHA token received' : 'reCAPTCHA token cleared', {
+            tokenLength: token ? token.length : 0,
+            timestamp: new Date().toISOString()
+        });
+
+        setFormData(prev => ({
+            ...prev,
+            recaptchaToken: token || ''
+        }));
+    };
+
+    const handleRecaptchaError = () => {
+        debugLog('reCAPTCHA error occurred', {
+            timestamp: new Date().toISOString()
+        });
+        setError('reCAPTCHA error occurred. Please try again.');
+    };
+
+    const handleRecaptchaExpired = () => {
+        debugLog('reCAPTCHA token expired', {
+            timestamp: new Date().toISOString()
+        });
+        setFormData(prev => ({ ...prev, recaptchaToken: '' }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -124,6 +171,14 @@ const StudentSignup = () => {
         // Only proceed if on the final step
         if (currentStep < 3) {
             setCurrentStep(prev => prev + 1);
+            setIsLoading(false);
+            return;
+        }
+
+        // Validate reCAPTCHA
+        if (!formData.recaptchaToken) {
+            debugLog('Signup failed: No reCAPTCHA token');
+            setError('Please complete the reCAPTCHA verification');
             setIsLoading(false);
             return;
         }
@@ -185,6 +240,9 @@ const StudentSignup = () => {
         } catch (error) {
             console.error('Registration error:', error);
             setError(error.message || 'Registration failed. Please try again.');
+            // Reset reCAPTCHA on error
+            recaptchaRef.current?.reset();
+            setFormData(prev => ({ ...prev, recaptchaToken: '' }));
             setIsLoading(false);
         }
     };
@@ -325,66 +383,71 @@ const StudentSignup = () => {
             case 3:
                 return (
                     <>
-                        <h5 className="mb-3">Account Setup</h5>
-                        {currentStep === 3 && (
-                            <>
-                                <div className="mb-3 position-relative">
-                                    <div className="input-group">
-                                        <input
-                                            type={showPassword ? "text" : "password"}
-                                            className="form-control"
-                                            placeholder="Password"
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            required
-                                            minLength="6"
-                                        />
-                                        <button
-                                            className="btn btn-outline-secondary"
-                                            type="button"
-                                            onMouseDown={() => setShowPassword(true)}
-                                            onMouseUp={() => setShowPassword(false)}
-                                            onMouseLeave={() => setShowPassword(false)}
-                                            onTouchStart={() => setShowPassword(true)}
-                                            onTouchEnd={() => setShowPassword(false)}
-                                            tabIndex="-1"
-                                        >
-                                            <i className={`bi bi-eye${showPassword ? '-slash' : ''}-fill`}></i>
-                                        </button>
-                                    </div>
-                                    <small className="text-muted">
-                                        Password must be at least 6 characters
-                                    </small>
-                                </div>
-                                <div className="mb-4 position-relative">
-                                    <div className="input-group">
-                                        <input
-                                            type={showConfirmPassword ? "text" : "password"}
-                                            className="form-control"
-                                            placeholder="Confirm Password"
-                                            name="confirmPassword"
-                                            value={formData.confirmPassword}
-                                            onChange={handleChange}
-                                            required
-                                            minLength="6"
-                                        />
-                                        <button
-                                            className="btn btn-outline-secondary"
-                                            type="button"
-                                            onMouseDown={() => setShowConfirmPassword(true)}
-                                            onMouseUp={() => setShowConfirmPassword(false)}
-                                            onMouseLeave={() => setShowConfirmPassword(false)}
-                                            onTouchStart={() => setShowConfirmPassword(true)}
-                                            onTouchEnd={() => setShowConfirmPassword(false)}
-                                            tabIndex="-1"
-                                        >
-                                            <i className={`bi bi-eye${showConfirmPassword ? '-slash' : ''}-fill`}></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </>
-                        )}
+                        <h5 className="mb-3">Account Security</h5>
+                        <div className="mb-3 position-relative">
+                            <div className="input-group">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    className="form-control"
+                                    placeholder="Password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required
+                                    minLength="6"
+                                />
+                                <button
+                                    className="btn btn-outline-secondary"
+                                    type="button"
+                                    onMouseDown={() => setShowPassword(true)}
+                                    onMouseUp={() => setShowPassword(false)}
+                                    onMouseLeave={() => setShowPassword(false)}
+                                    onTouchStart={() => setShowPassword(true)}
+                                    onTouchEnd={() => setShowPassword(false)}
+                                    tabIndex="-1"
+                                >
+                                    <i className={`bi bi-eye${showPassword ? '-slash' : ''}-fill`}></i>
+                                </button>
+                            </div>
+                            <small className="text-muted">
+                                Password must be at least 6 characters
+                            </small>
+                        </div>
+                        <div className="mb-4 position-relative">
+                            <div className="input-group">
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    className="form-control"
+                                    placeholder="Confirm Password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    required
+                                    minLength="6"
+                                />
+                                <button
+                                    className="btn btn-outline-secondary"
+                                    type="button"
+                                    onMouseDown={() => setShowConfirmPassword(true)}
+                                    onMouseUp={() => setShowConfirmPassword(false)}
+                                    onMouseLeave={() => setShowConfirmPassword(false)}
+                                    onTouchStart={() => setShowConfirmPassword(true)}
+                                    onTouchEnd={() => setShowConfirmPassword(false)}
+                                    tabIndex="-1"
+                                >
+                                    <i className={`bi bi-eye${showConfirmPassword ? '-slash' : ''}-fill`}></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="mb-3 d-flex justify-content-center">
+                            <ReCAPTCHA
+                                ref={recaptchaRef}
+                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                onChange={handleRecaptchaChange}
+                                onError={handleRecaptchaError}
+                                onExpired={handleRecaptchaExpired}
+                            />
+                        </div>
                     </>
                 );
             default:
