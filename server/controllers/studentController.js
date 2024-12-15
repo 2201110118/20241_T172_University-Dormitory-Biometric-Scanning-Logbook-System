@@ -30,14 +30,30 @@ const postStudent = async (req, res) => {
   try {
     const { confirmPassword, ...studentData } = req.body;
 
+    // Format date in MM/DD/YYYY format for Philippines time
+    const now = new Date();
+    const philippinesTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const month = String(philippinesTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(philippinesTime.getUTCDate()).padStart(2, '0');
+    const year = philippinesTime.getUTCFullYear();
+    const formattedDate = `${month}/${day}/${year}`;
+
     // Add default values
     studentData.registeredaccount = false;
     studentData.accountStatus = {
       isConfirmed: false,
-      submissionDate: new Date().toISOString()
+      submissionDate: formattedDate,
+      verificationDate: null
     };
 
+    // Create the student record
     const student = await Students.create(studentData);
+
+    // Ensure the submission date is set by explicitly updating it
+    await Students.findByIdAndUpdate(student._id, {
+      'accountStatus.submissionDate': formattedDate
+    }, { new: true });
+
     res.status(201).json(student);
   } catch (error) {
     if (error.code === 11000) {

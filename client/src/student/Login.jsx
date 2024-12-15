@@ -35,6 +35,8 @@ function StudentLogin() {
     const [errorModal, setErrorModal] = useState(null);
     const [contentLoaded, setContentLoaded] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+    const [recaptchaError, setRecaptchaError] = useState(null);
 
     useEffect(() => {
         // Set a small delay to ensure DOM is ready
@@ -53,11 +55,26 @@ function StudentLogin() {
             environment: import.meta.env.MODE
         });
 
+        // Add reCAPTCHA script load error handler
+        const handleRecaptchaLoadError = () => {
+            setRecaptchaError('Failed to load reCAPTCHA. Please refresh the page or check your internet connection.');
+            debugLog('reCAPTCHA script failed to load');
+        };
+
+        // Monitor reCAPTCHA script loading
+        const recaptchaScript = document.querySelector('script[src*="recaptcha"]');
+        if (recaptchaScript) {
+            recaptchaScript.addEventListener('error', handleRecaptchaLoadError);
+        }
+
         return () => {
             clearTimeout(timer);
             setIsVisible(false);
             if (errorModal) {
                 errorModal.dispose();
+            }
+            if (recaptchaScript) {
+                recaptchaScript.removeEventListener('error', handleRecaptchaLoadError);
             }
         };
     }, []);
@@ -93,6 +110,12 @@ function StudentLogin() {
             timestamp: new Date().toISOString()
         });
         setFormData(prev => ({ ...prev, recaptchaToken: '' }));
+    };
+
+    const handleRecaptchaLoad = () => {
+        setRecaptchaLoaded(true);
+        setRecaptchaError(null);
+        debugLog('reCAPTCHA loaded successfully');
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
@@ -366,13 +389,14 @@ function StudentLogin() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="mb-4 d-flex justify-content-center">
+                            <div className="recaptcha-container">
                                 <ReCAPTCHA
                                     ref={recaptchaRef}
                                     sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
                                     onChange={handleRecaptchaChange}
                                     onError={handleRecaptchaError}
                                     onExpired={handleRecaptchaExpired}
+                                    onLoad={handleRecaptchaLoad}
                                 />
                             </div>
                             <div className="d-flex justify-content-center">

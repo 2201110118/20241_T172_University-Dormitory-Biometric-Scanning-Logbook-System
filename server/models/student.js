@@ -55,7 +55,14 @@ const studentSchema = new mongoose.Schema({
         },
         submissionDate: {
             type: String,
-            default: () => formatDate(new Date()),
+            default: function() {
+                const now = new Date();
+                const philippinesTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+                const month = String(philippinesTime.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(philippinesTime.getUTCDate()).padStart(2, '0');
+                const year = philippinesTime.getUTCFullYear();
+                return `${month}/${day}/${year}`;
+            },
             get: (date) => formatDate(date)
         },
         verificationDate: {

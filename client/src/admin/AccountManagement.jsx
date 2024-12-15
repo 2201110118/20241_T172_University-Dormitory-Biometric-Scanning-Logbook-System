@@ -526,7 +526,7 @@ function AdminAccountManagement() {
             width: '25%',
         },
         {
-            name: 'Room',
+            name: 'Room Number',
             selector: row => row.roomnumber || 'N/A',
             sortable: true,
             width: '10%',
@@ -569,7 +569,7 @@ function AdminAccountManagement() {
 
     const unregisteredColumns = [
         {
-            name: 'ID',
+            name: 'Student ID',
             selector: row => row.studentid,
             sortable: false,
             width: '12%',
@@ -581,14 +581,14 @@ function AdminAccountManagement() {
             width: '25%',
         },
         {
-            name: 'Gmail Account',
+            name: 'Gmail',
             selector: row => row.gmail,
             sortable: false,
             width: '25%',
         },
         {
             name: 'Room Number',
-            selector: row => row.roomnumber ? row.roomnumber : 'Not assigned',
+            selector: row => row.roomnumber ? row.roomnumber : 'N/A',
             sortable: false,
             width: '15%',
         },

@@ -210,3 +210,23 @@ a:hover {
 .btn:hover .bi {
     transform: translateY(-1px);
 }
+
+.recaptcha-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+    min-height: 78px; /* Height of reCAPTCHA widget */
+}
+
+.recaptcha-container iframe {
+    margin: 0 auto;
+}
+
+/* Ensure reCAPTCHA is centered and responsive */
+@media (max-width: 300px) {
+    .recaptcha-container {
+        transform: scale(0.9);
+        transform-origin: center;
+    }
+}

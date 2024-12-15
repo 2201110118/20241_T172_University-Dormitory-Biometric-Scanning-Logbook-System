@@ -21,7 +21,7 @@ export const generateStudentReport = async (req, res) => {
 
         // Fetch students based on filters
         const students = await Student.find(filter)
-            .select('studentid fullname roomnumber registeredaccount')
+            .select('studentid fullname roomnumber registeredaccount gmail accountStatus')
             .sort({ studentid: 1 });
 
         // Generate PDF report
@@ -51,7 +51,13 @@ export const generateLogbookReport = async (req, res) => {
     try {
         // Fetch all non-archived logs
         const logs = await Log.find({ archive: false })
-            .populate('student', 'studentid fullname')
+            .populate({
+                path: 'student',
+                model: 'Students',
+                localField: 'student',
+                foreignField: 'studentid',
+                select: 'studentid fullname roomnumber'
+            })
             .sort({ date: -1, timeIn: -1 });
 
         // Generate PDF report

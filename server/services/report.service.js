@@ -9,13 +9,19 @@ const __dirname = path.dirname(__filename);
 class ReportService {
     constructor() {
         this.browser = null;
-        this.reportsDir = path.join(__dirname, '../reports');
+        this.reportsDir = path.resolve(process.cwd(), 'server', 'reports');
     }
 
     async initialize() {
         try {
-            // Create reports directory if it doesn't exist
-            await fs.mkdir(this.reportsDir, { recursive: true });
+            // Ensure reports directory exists with recursive creation
+            try {
+                await fs.access(this.reportsDir);
+            } catch (error) {
+                // Directory doesn't exist, create it
+                await fs.mkdir(this.reportsDir, { recursive: true });
+                console.log('Reports directory created at:', this.reportsDir);
+            }
             
             // Launch browser instance
             this.browser = await puppeteer.launch({
@@ -178,7 +184,7 @@ class ReportService {
                 <style>
                     body { 
                         font-family: Arial, sans-serif;
-                        padding-top: 20px; /* Add padding to the top of the content */
+                        padding-top: 20px;
                     }
                     table { 
                         width: 100%; 
@@ -192,6 +198,7 @@ class ReportService {
                     }
                     th { 
                         background-color: #f4f4f4; 
+                        font-weight: bold;
                     }
                     .student-info { 
                         margin-bottom: 20px; 
@@ -199,7 +206,6 @@ class ReportService {
                     .section { 
                         margin-bottom: 30px;
                     }
-                    /* Add any additional styles you need */
                 </style>
             </head>
             <body>
@@ -209,15 +215,21 @@ class ReportService {
                         <tr>
                             <th>Student ID</th>
                             <th>Name</th>
+                            <th>Gmail</th>
                             <th>Room Number</th>
                             <th>Status</th>
+                            <th>Submission Date</th>
+                            <th>Registration Date</th>
                         </tr>
                         ${data.students.map(student => `
                             <tr>
                                 <td>${student.studentid}</td>
                                 <td>${student.fullname?.firstname} ${student.fullname?.lastname}</td>
+                                <td>${student.gmail || 'N/A'}</td>
                                 <td>${student.roomnumber || 'N/A'}</td>
                                 <td>${student.registeredaccount ? 'Active' : 'Inactive'}</td>
+                                <td>${student.accountStatus?.submissionDate || 'N/A'}</td>
+                                <td>${student.accountStatus?.verificationDate || 'N/A'}</td>
                             </tr>
                         `).join('')}
                     </table>
@@ -233,33 +245,51 @@ class ReportService {
             <html>
             <head>
                 <style>
-                    body { font-family: Arial, sans-serif; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background-color: #f4f4f4; }
-                    .section { margin-bottom: 30px; }
+                    body { 
+                        font-family: Arial, sans-serif;
+                        padding: 20px;
+                    }
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-top: 20px;
+                    }
+                    th, td { 
+                        border: 1px solid #ddd; 
+                        padding: 8px; 
+                        text-align: left;
+                    }
+                    th { 
+                        background-color: #f4f4f4;
+                        font-weight: bold;
+                    }
+                    .section { 
+                        margin-bottom: 30px;
+                    }
                 </style>
             </head>
             <body>
                 <div class="section">
-                    <h3>Logbook Entries</h3>
+                    <h3>Logbook History</h3>
                     <table>
                         <tr>
-                            <th>Date</th>
+                            <th>Log ID</th>
                             <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Status</th>
+                            <th>Full Name</th>
+                            <th>Room Number</th>
+                            <th>Log Type</th>
+                            <th>Date</th>
+                            <th>Time</th>
                         </tr>
                         ${data.logs.map(log => `
                             <tr>
-                                <td>${new Date(log.date).toLocaleDateString()}</td>
+                                <td>${log.logid || 'N/A'}</td>
                                 <td>${log.student?.studentid || 'N/A'}</td>
-                                <td>${log.student?.fullname?.firstname} ${log.student?.fullname?.lastname}</td>
-                                <td>${log.timeIn || 'N/A'}</td>
-                                <td>${log.timeOut || 'N/A'}</td>
-                                <td>${log.status || 'N/A'}</td>
+                                <td>${log.student ? `${log.student.fullname.firstname} ${log.student.fullname.lastname}` : 'N/A'}</td>
+                                <td>${log.student?.roomnumber || 'N/A'}</td>
+                                <td>${log.logType || 'N/A'}</td>
+                                <td>${log.timestamp?.date || 'N/A'}</td>
+                                <td>${log.timestamp?.time || 'N/A'}</td>
                             </tr>
                         `).join('')}
                     </table>
