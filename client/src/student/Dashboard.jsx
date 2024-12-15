@@ -9,6 +9,7 @@ function StudentDashboard() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [isExiting, setIsExiting] = useState(false);
     const [studentName, setStudentName] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
     const [messages, setMessages] = useState([]);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
@@ -155,7 +156,7 @@ function StudentDashboard() {
                                 <li className="nav-item border-bottom border-white">
                                     <Link to="/StudentLogbookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">My Logbook</span>
+                                        <span className="ms-2 fw-bold fs-6">My Logbook History</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
@@ -273,9 +274,14 @@ function StudentDashboard() {
                                                 <DataTable
                                                     columns={[
                                                         {
+                                                            name: 'Message ID',
+                                                            selector: row => row.messageid,
+                                                            sortable: false,
+                                                        },
+                                                        {
                                                             name: 'Description',
                                                             selector: row => row.description,
-                                                            sortable: true,
+                                                            sortable: false,
                                                             cell: row => (
                                                                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
                                                                     {row.description}
@@ -285,12 +291,12 @@ function StudentDashboard() {
                                                         {
                                                             name: 'Date',
                                                             selector: row => row.requestStatus.requestDate,
-                                                            sortable: true,
+                                                            sortable: false,
                                                         },
                                                         {
                                                             name: 'Status',
                                                             selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
-                                                            sortable: true,
+                                                            sortable: false,
                                                             cell: row => (
                                                                 <span className="badge bg-warning">Pending</span>
                                                             ),
@@ -305,6 +311,7 @@ function StudentDashboard() {
                                                     highlightOnHover
                                                     noDataComponent="No pending requests found"
                                                     pagination={false}
+                                                    dense
                                                 />
                                             </div>
                                         </div>
@@ -328,9 +335,14 @@ function StudentDashboard() {
                                                 <DataTable
                                                     columns={[
                                                         {
+                                                            name: 'Message ID',
+                                                            selector: row => row.messageid,
+                                                            sortable: false,
+                                                        },
+                                                        {
                                                             name: 'Description',
                                                             selector: row => row.description,
-                                                            sortable: true,
+                                                            sortable: false,
                                                             cell: row => (
                                                                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
                                                                     {row.description}
@@ -340,17 +352,17 @@ function StudentDashboard() {
                                                         {
                                                             name: 'Request Date',
                                                             selector: row => row.requestStatus.requestDate,
-                                                            sortable: true,
+                                                            sortable: false,
                                                         },
                                                         {
                                                             name: 'Confirmation Date',
                                                             selector: row => row.requestStatus.confirmationDate,
-                                                            sortable: true,
+                                                            sortable: false,
                                                         },
                                                         {
                                                             name: 'Status',
                                                             selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
-                                                            sortable: true,
+                                                            sortable: false,
                                                             cell: row => (
                                                                 <span className="badge bg-success">Confirmed</span>
                                                             ),
@@ -365,6 +377,7 @@ function StudentDashboard() {
                                                     highlightOnHover
                                                     noDataComponent="No confirmed requests found"
                                                     pagination={false}
+                                                    dense
                                                 />
                                             </div>
                                         </div>

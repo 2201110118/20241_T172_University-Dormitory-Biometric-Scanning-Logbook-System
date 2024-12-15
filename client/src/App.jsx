@@ -17,6 +17,7 @@ import AccountSettings from './admin/AccountSettings';
 
 // Student Components
 import StudentDashboard from './student/Dashboard';
+import StudentLogbookHistory from './student/LogbookHistory';
 import StudentLogin from './student/Login';
 import StudentSignup from './student/Signup';
 import StudentNightPass from './student/NightPass';
@@ -80,7 +81,7 @@ const App = () => {
           } />
           <Route path="/StudentLogbookHistory" element={
             <ProtectedRoute userType="student" requireAuth={true}>
-              <StudentDashboard />
+              <StudentLogbookHistory />
             </ProtectedRoute>
           } />
           <Route path="/StudentNightPass" element={

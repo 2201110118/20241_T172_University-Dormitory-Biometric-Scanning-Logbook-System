@@ -5,7 +5,7 @@ import TableLoader from '../components/TableLoader';
 import customTableStyles from '../components/TableStyles';
 import StudentHeader from '../components/StudentHeader';
 
-function StudentNightPass() {
+function StudentLogbookHistory() {
     const location = useLocation();
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
@@ -488,13 +488,13 @@ function StudentNightPass() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/StudentNightPass" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
+                                    <Link to="/StudentNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Night Pass</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/StudentLogbookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentLogbookHistory" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
                                         <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">My Logbook History</span>
                                     </Link>
@@ -898,4 +898,4 @@ function StudentNightPass() {
     );
 }
 
-export default StudentNightPass; 
+export default StudentLogbookHistory;

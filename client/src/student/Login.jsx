@@ -399,9 +399,10 @@ function StudentLogin() {
                                 </div>
                                 <div className="mt-3">
                                     <GoogleLogin
+                                        clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
                                         onSuccess={handleGoogleSuccess}
                                         onError={handleGoogleError}
-                                        useOneTap
+                                        useOneTap={true}
                                     />
                                 </div>
                             </div>
