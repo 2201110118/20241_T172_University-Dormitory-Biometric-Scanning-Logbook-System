@@ -15,6 +15,7 @@ import AdminLogbookHistory from './admin/LogbookHistory';
 import AdminSettings from './admin/Settings';
 import AccountSettings from './admin/AccountSettings';
 import Message from './admin/Message';
+import GenerateReport from './admin/GenerateReport';
 
 // Student Components
 import StudentDashboard from './student/Dashboard';
@@ -65,6 +66,11 @@ const App = () => {
           <Route path="/AdminMessage" element={
             <ProtectedRoute userType="admin" requireAuth={true}>
               <Message />
+            </ProtectedRoute>
+          } />
+          <Route path="/AdminGenerateReport" element={
+            <ProtectedRoute userType="admin" requireAuth={true}>
+              <GenerateReport />
             </ProtectedRoute>
           } />
           <Route path="/AdminSettings" element={

@@ -307,7 +307,7 @@ function AdminDashboard() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/AdminGenerateReport" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Generate Report</span>
                                     </Link>

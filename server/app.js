@@ -54,6 +54,7 @@ import loginRouteStudent from './routes/loginRouteStudent.js';
 import authRoute from './routes/authRoute.js';
 import smsRoutes from './routes/sms.routes.js';
 import emailRoutes from './routes/email.routes.js';
+import reportRoutes from './routes/report.routes.js';
 
 // Define API routes
 app.use('/api/student', studentRoute);
@@ -63,6 +64,7 @@ app.use('/api/message', messageRoute);
 app.use('/api/log', logRoute);
 app.use('/api/sms', smsRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/report', reportRoutes);
 
 // Login routes - keeping both patterns for backward compatibility
 app.use('/api/login', loginRouteAdmin);
