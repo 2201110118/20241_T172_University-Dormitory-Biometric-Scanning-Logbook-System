@@ -1,7 +1,7 @@
 import Students from '../models/student.js';
 import Messages from '../models/message.js';
 import Logs from '../models/log.js';
-import axios from 'axios';
+import bcrypt from 'bcrypt';
 
 const getStudents = async (req, res) => {
   try {
@@ -26,43 +26,34 @@ const getStudent = async (req, res) => {
   }
 };
 
-const verifyRecaptcha = async (token) => {
-  try {
-    const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
-      params: {
-        secret: process.env.RECAPTCHA_SECRET_KEY,
-        response: token
-      }
-    });
-    return response.data.success;
-  } catch (error) {
-    console.error('reCAPTCHA verification error:', error);
-    return false;
-  }
-};
-
 const postStudent = async (req, res) => {
   try {
-    const { captchaToken, confirmPassword, ...studentData } = req.body;
+    const { confirmPassword, ...studentData } = req.body;
 
-    // Verify reCAPTCHA
-    if (!captchaToken) {
-      return res.status(400).json({ message: 'Please complete the reCAPTCHA verification' });
-    }
-
-    const isValidCaptcha = await verifyRecaptcha(captchaToken);
-    if (!isValidCaptcha) {
-      return res.status(400).json({ message: 'Invalid reCAPTCHA. Please try again.' });
-    }
+    // Format date in MM/DD/YYYY format for Philippines time
+    const now = new Date();
+    const philippinesTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const month = String(philippinesTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(philippinesTime.getUTCDate()).padStart(2, '0');
+    const year = philippinesTime.getUTCFullYear();
+    const formattedDate = `${month}/${day}/${year}`;
 
     // Add default values
     studentData.registeredaccount = false;
     studentData.accountStatus = {
       isConfirmed: false,
-      submissionDate: new Date().toISOString()
+      submissionDate: formattedDate,
+      verificationDate: null
     };
 
+    // Create the student record
     const student = await Students.create(studentData);
+
+    // Ensure the submission date is set by explicitly updating it
+    await Students.findByIdAndUpdate(student._id, {
+      'accountStatus.submissionDate': formattedDate
+    }, { new: true });
+
     res.status(201).json(student);
   } catch (error) {
     if (error.code === 11000) {
@@ -77,13 +68,33 @@ const postStudent = async (req, res) => {
 const updateStudent = async (req, res) => {
   try {
     const studentid = req.params.id;
+    const { currentPassword, password, ...updates } = req.body;
 
     if (!studentid) {
       return res.status(400).json({ message: "Student ID is required" });
     }
 
     console.log('Updating student with studentid:', studentid);
-    console.log('Update data:', req.body);
+    console.log('Update data:', { ...updates, hasPassword: !!password });
+
+    // If password update is requested, verify current password
+    if (password) {
+      const student = await Students.findOne({ studentid }).select('+password');
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
+      // Verify current password
+      const isMatch = await student.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      updates.password = hashedPassword;
+    }
 
     const cleanData = (obj) => {
       const cleaned = {};
@@ -100,15 +111,15 @@ const updateStudent = async (req, res) => {
       return cleaned;
     };
 
-    const updates = cleanData(req.body);
+    const cleanedUpdates = cleanData(updates);
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(cleanedUpdates).length === 0 && !password) {
       return res.status(400).json({ message: "No valid fields to update." });
     }
 
     const updatedStudent = await Students.findOneAndUpdate(
       { studentid: studentid },
-      { $set: updates },
+      { $set: cleanedUpdates },
       {
         new: true,
         runValidators: true,
@@ -228,4 +239,17 @@ const loginWithGoogle = async (req, res) => {
   }
 };
 
-export { getStudents, getStudent, postStudent, updateStudent, deleteStudent, checkGoogleStudent, loginWithGoogle };
+const getStudentByStudentId = async (req, res) => {
+  try {
+    const student = await Students.findOne({ studentid: req.params.studentid });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+    res.status(200).json(student);
+  } catch (error) {
+    console.error('Error fetching student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export { getStudents, getStudent, postStudent, updateStudent, deleteStudent, checkGoogleStudent, loginWithGoogle, getStudentByStudentId };

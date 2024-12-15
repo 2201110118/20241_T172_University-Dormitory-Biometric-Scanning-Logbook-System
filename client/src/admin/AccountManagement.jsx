@@ -526,7 +526,7 @@ function AdminAccountManagement() {
             width: '25%',
         },
         {
-            name: 'Room',
+            name: 'Room Number',
             selector: row => row.roomnumber || 'N/A',
             sortable: true,
             width: '10%',
@@ -569,7 +569,7 @@ function AdminAccountManagement() {
 
     const unregisteredColumns = [
         {
-            name: 'ID',
+            name: 'Student ID',
             selector: row => row.studentid,
             sortable: false,
             width: '12%',
@@ -581,14 +581,14 @@ function AdminAccountManagement() {
             width: '25%',
         },
         {
-            name: 'Gmail Account',
+            name: 'Gmail',
             selector: row => row.gmail,
             sortable: false,
             width: '25%',
         },
         {
             name: 'Room Number',
-            selector: row => row.roomnumber ? row.roomnumber : 'Not assigned',
+            selector: row => row.roomnumber ? row.roomnumber : 'N/A',
             sortable: false,
             width: '15%',
         },
@@ -683,7 +683,13 @@ function AdminAccountManagement() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/AdminMessage" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-envelope-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Message</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminGenerateReport" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Generate Report</span>
                                     </Link>
@@ -691,7 +697,7 @@ function AdminAccountManagement() {
                                 <li className="nav-item border-bottom border-white">
                                     <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                        <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
                                 </li>
                             </ul>

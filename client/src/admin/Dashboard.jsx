@@ -144,11 +144,19 @@ function AdminDashboard() {
         {
             name: 'Request Date',
             selector: row => {
-                const date = new Date(row.requestStatus.requestDate);
+                if (!row.requestStatus.requestDate) return 'N/A';
+
+                // Split the MM/DD/YYYY string
+                const [month, day, year] = row.requestStatus.requestDate.split('/');
+
+                // Create date object with explicit values (using local time)
+                const date = new Date(year, month - 1, day);  // month is 0-based in JS
+
                 return date.toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
-                    day: 'numeric'
+                    day: 'numeric',
+                    timeZone: 'UTC'  // Force UTC to prevent timezone shifts
                 });
             },
             sortable: false,
@@ -293,7 +301,13 @@ function AdminDashboard() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/AdminMessage" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-envelope-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Message</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminGenerateReport" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Generate Report</span>
                                     </Link>
@@ -301,7 +315,7 @@ function AdminDashboard() {
                                 <li className="nav-item border-bottom border-white">
                                     <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                        <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
                                 </li>
                             </ul>

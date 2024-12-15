@@ -1,25 +1,27 @@
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, userType, requireAuth = true }) => {
-    const isAdminLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
-    const isStudentLoggedIn = localStorage.getItem('studentLoggedIn') === 'true';
+    const { isAuthenticated, userType: currentUserType, isLoading } = useAuth();
+
+    if (isLoading) {
+        return <div className="d-flex justify-content-center align-items-center min-vh-100">
+            <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+            </div>
+        </div>;
+    }
 
     // For protected routes that require authentication
     if (requireAuth) {
-        if (userType === 'admin' && !isAdminLoggedIn) {
-            return <Navigate to="/admin/login" replace />;
-        }
-        if (userType === 'student' && !isStudentLoggedIn) {
-            return <Navigate to="/student/login" replace />;
+        if (!isAuthenticated || currentUserType !== userType) {
+            return <Navigate to={`/${userType}/login`} replace />;
         }
     }
     // For login/signup routes that should be inaccessible when authenticated
     else {
-        if (userType === 'admin' && isAdminLoggedIn) {
-            return <Navigate to="/AdminDashboard" replace />;
-        }
-        if (userType === 'student' && isStudentLoggedIn) {
-            return <Navigate to="/StudentDashboard" replace />;
+        if (isAuthenticated && currentUserType === userType) {
+            return <Navigate to={`/${userType === 'admin' ? 'Admin' : 'Student'}Dashboard`} replace />;
         }
     }
 

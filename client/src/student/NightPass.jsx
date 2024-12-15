@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import DataTable from 'react-data-table-component';
 import TableLoader from '../components/TableLoader';
 import customTableStyles from '../components/TableStyles';
-import AdminHeader from '../components/AdminHeader';
+import StudentHeader from '../components/StudentHeader';
 
-function AdminNightPass() {
+function StudentNightPass() {
+    const location = useLocation();
+    const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -14,37 +16,78 @@ function AdminNightPass() {
     const [messageToDelete, setMessageToDelete] = useState(null);
     const [showInfoModal, setShowInfoModal] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
+    const [showRequestModal, setShowRequestModal] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [isExiting, setIsExiting] = useState(false);
+    const dropdownRef = useRef(null);
+    const [newRequest, setNewRequest] = useState({
+        description: ''
+    });
+    const [studentId, setStudentId] = useState(null);
+    const [studentName, setStudentName] = useState('');
 
     const [confirmedInputs, setConfirmedInputs] = useState({
-        messageid: '',
-        studentid: '',
-        firstname: '',
-        lastname: '',
-        roomnumber: '',
+        description: '',
         date: ''
     });
 
     const [pendingInputs, setPendingInputs] = useState({
-        messageid: '',
-        studentid: '',
-        firstname: '',
-        lastname: '',
-        roomnumber: '',
+        description: '',
         date: ''
     });
 
-    const [activeTab, setActiveTab] = useState('confirmed');
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'confirmed');
+
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editMessage, setEditMessage] = useState({
+        messageid: null,
+        description: ''
+    });
+    const [isEditLoading, setIsEditLoading] = useState(false);
+
+    useEffect(() => {
+        // Get student info from session
+        fetch('http://localhost:5000/api/auth/check-session', {
+            credentials: 'include'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.isAuthenticated && data.user && data.user.fullname) {
+                    setStudentName(`${data.user.fullname.firstname} ${data.user.fullname.lastname}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching student info:', error);
+            });
+    }, []);
 
     const fetchMessages = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch("http://localhost:5000/api/message");
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            // Filter out archived messages
-            const activeMessages = data.filter(message => !message.archive);
-            const sortedData = activeMessages.sort((a, b) => new Date(b.requestStatus.requestDate) - new Date(a.requestStatus.requestDate));
-            setMessages(sortedData);
+            // First get the student's ID from the session
+            const sessionResponse = await fetch("http://localhost:5000/api/auth/check-session", {
+                credentials: 'include'
+            });
+            const sessionData = await sessionResponse.json();
+
+            if (sessionData.isAuthenticated && sessionData.user) {
+                setStudentId(sessionData.user.studentid);
+
+                // Then fetch all messages
+                const response = await fetch("http://localhost:5000/api/message");
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                // Filter messages for the current student
+                const studentMessages = data.filter(message =>
+                    message.student?.studentid === sessionData.user.studentid && !message.archive
+                );
+
+                const sortedData = studentMessages.sort((a, b) =>
+                    new Date(b.requestStatus.requestDate) - new Date(a.requestStatus.requestDate)
+                );
+                setMessages(sortedData);
+            }
         } catch (error) {
             console.error(`Error fetching messages: ${error}`);
         } finally {
@@ -72,20 +115,59 @@ function AdminNightPass() {
         }));
     };
 
-    const getFilteredConfirmedMessages = () => {
-        if (!messages) return [];
-        return messages.filter(message => message.requestStatus.isConfirmed).filter(message => {
-            const messageid = message.messageid?.toString().toLowerCase() || '';
-            const studentid = message.student?.studentid?.toString().toLowerCase() || '';
-            const firstname = message.student?.fullname?.firstname?.toLowerCase() || '';
-            const lastname = message.student?.fullname?.lastname?.toLowerCase() || '';
-            const roomnumber = message.student?.roomnumber?.toString().toLowerCase() || '';
+    const handleNewRequestChange = (e) => {
+        setNewRequest({
+            ...newRequest,
+            [e.target.name]: e.target.value
+        });
+    };
 
-            // Format the confirmation date to match the input date format (YYYY-MM-DD)
+    const handleRequestSubmit = async () => {
+        try {
+            // Get the latest message ID
+            const response = await fetch("http://localhost:5000/api/message");
+            const messages = await response.json();
+            const latestMessageId = Math.max(...messages.map(m => m.messageid), 0);
+
+            // Create new message
+            const newMessage = {
+                student: studentId,
+                description: newRequest.description,
+                messageid: latestMessageId + 1,
+                requestStatus: {
+                    isConfirmed: false,
+                    requestDate: new Date().toLocaleDateString('en-US')
+                }
+            };
+
+            const submitResponse = await fetch("http://localhost:5000/api/message", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newMessage)
+            });
+
+            if (!submitResponse.ok) {
+                throw new Error('Failed to submit request');
+            }
+
+            // Refresh messages and close modal
+            await fetchMessages();
+            setShowRequestModal(false);
+            setNewRequest({ description: '' });
+
+        } catch (error) {
+            console.error('Error submitting request:', error);
+        }
+    };
+
+    const getFilteredConfirmedMessages = () => {
+        return messages.filter(message => message.requestStatus.isConfirmed).filter(message => {
+            const description = message.description?.toLowerCase() || '';
             let confirmationDate = '';
             if (message.requestStatus?.confirmationDate) {
                 try {
-                    // Convert MM/DD/YYYY to YYYY-MM-DD
                     const parts = message.requestStatus.confirmationDate.split('/');
                     if (parts.length === 3) {
                         const [month, day, year] = parts;
@@ -96,41 +178,23 @@ function AdminNightPass() {
                 }
             }
 
-            // Debug logs
-            console.log('Original Confirmation Date:', message.requestStatus?.confirmationDate);
-            console.log('Formatted Confirmation Date:', confirmationDate);
-            console.log('Input Date:', confirmedInputs.date);
-            console.log('Date Match:', confirmationDate === confirmedInputs.date);
-
             const dateFilter = confirmedInputs.date
                 ? confirmationDate === confirmedInputs.date
                 : true;
 
             return (
-                messageid.includes(confirmedInputs.messageid.toLowerCase()) &&
-                studentid.includes(confirmedInputs.studentid.toLowerCase()) &&
-                firstname.includes(confirmedInputs.firstname.toLowerCase()) &&
-                lastname.includes(confirmedInputs.lastname.toLowerCase()) &&
-                roomnumber.includes(confirmedInputs.roomnumber.toLowerCase()) &&
+                description.includes(confirmedInputs.description.toLowerCase()) &&
                 dateFilter
             );
         });
     };
 
     const getFilteredPendingMessages = () => {
-        if (!messages) return [];
         return messages.filter(message => !message.requestStatus.isConfirmed).filter(message => {
-            const messageid = message.messageid?.toString().toLowerCase() || '';
-            const studentid = message.student?.studentid?.toString().toLowerCase() || '';
-            const firstname = message.student?.fullname?.firstname?.toLowerCase() || '';
-            const lastname = message.student?.fullname?.lastname?.toLowerCase() || '';
-            const roomnumber = message.student?.roomnumber?.toString().toLowerCase() || '';
-
-            // Format the request date to match the input date format (YYYY-MM-DD)
+            const description = message.description?.toLowerCase() || '';
             let requestDate = '';
             if (message.requestStatus?.requestDate) {
                 try {
-                    // Convert MM/DD/YYYY to YYYY-MM-DD
                     const parts = message.requestStatus.requestDate.split('/');
                     if (parts.length === 3) {
                         const [month, day, year] = parts;
@@ -141,22 +205,12 @@ function AdminNightPass() {
                 }
             }
 
-            // Debug logs
-            console.log('Original Request Date:', message.requestStatus?.requestDate);
-            console.log('Formatted Request Date:', requestDate);
-            console.log('Input Date:', pendingInputs.date);
-            console.log('Date Match:', requestDate === pendingInputs.date);
-
             const dateFilter = pendingInputs.date
                 ? requestDate === pendingInputs.date
                 : true;
 
             return (
-                messageid.includes(pendingInputs.messageid.toLowerCase()) &&
-                studentid.includes(pendingInputs.studentid.toLowerCase()) &&
-                firstname.includes(pendingInputs.firstname.toLowerCase()) &&
-                lastname.includes(pendingInputs.lastname.toLowerCase()) &&
-                roomnumber.includes(pendingInputs.roomnumber.toLowerCase()) &&
+                description.includes(pendingInputs.description.toLowerCase()) &&
                 dateFilter
             );
         });
@@ -178,38 +232,47 @@ function AdminNightPass() {
             });
 
             if (!response.ok) {
-                console.error('Archive response not OK:', response);
                 throw new Error('Failed to archive message');
             }
 
-            console.log('Message successfully archived, fetching updated messages...');
             await fetchMessages();
             setShowDeleteModal(false);
         } catch (error) {
-            console.error('Error in handleArchive:', error);
+            console.error('Error archiving message:', error);
         }
     };
 
-    const handleAccept = async () => {
+    const handleEditClick = (message) => {
+        setEditMessage({
+            messageid: message.messageid,
+            description: message.description
+        });
+        setShowEditModal(true);
+    };
+
+    const handleEditSubmit = async () => {
+        setIsEditLoading(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/message/${selectedMessageId}`, {
+            const response = await fetch(`http://localhost:5000/api/message/${editMessage.messageid}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    requestStatus: {
-                        isConfirmed: true,
-                        confirmationDate: new Date().toISOString()
-                    }
+                    description: editMessage.description
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to confirm message');
+            if (!response.ok) {
+                throw new Error('Failed to update message');
+            }
+
             await fetchMessages();
-            setShowConfirmModal(false);
+            setShowEditModal(false);
         } catch (error) {
-            console.error('Error confirming message:', error);
+            console.error('Error updating message:', error);
+        } finally {
+            setIsEditLoading(false);
         }
     };
 
@@ -218,40 +281,35 @@ function AdminNightPass() {
             name: 'Message ID',
             selector: row => row.messageid,
             sortable: true,
-            width: '10%',
-        },
-        {
-            name: 'Student ID',
-            selector: row => row.student?.studentid || 'N/A',
-            sortable: true,
-            width: '10%',
-        },
-        {
-            name: 'Full Name',
-            selector: row => {
-                const student = row.student;
-                return student ? `${student.fullname.firstname} ${student.fullname.lastname}` : 'N/A';
-            },
-            sortable: true,
-            width: '18%',
+            width: '20%',
         },
         {
             name: 'Description',
             selector: row => row.description,
             sortable: true,
-            width: '18%',
+            width: '20%',
+            cell: row => (
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
+                    {row.description}
+                </div>
+            ),
         },
         {
             name: 'Confirmation Date',
             selector: row => row.requestStatus.confirmationDate || 'N/A',
             sortable: true,
-            width: '14%',
+            width: '20%',
         },
         {
             name: 'Status',
             selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
             sortable: true,
-            width: '10%',
+            width: '20%',
+            cell: row => (
+                <span className={`badge ${row.requestStatus.isConfirmed ? 'bg-success' : 'bg-warning'}`}>
+                    {row.requestStatus.isConfirmed ? "Confirmed" : "Pending"}
+                </span>
+            ),
         },
         {
             name: 'Actions',
@@ -284,40 +342,35 @@ function AdminNightPass() {
             name: 'Message ID',
             selector: row => row.messageid,
             sortable: true,
-            width: '10%',
-        },
-        {
-            name: 'Student ID',
-            selector: row => row.student?.studentid || 'N/A',
-            sortable: true,
-            width: '10%',
-        },
-        {
-            name: 'Full Name',
-            selector: row => {
-                const student = row.student;
-                return student ? `${student.fullname.firstname} ${student.fullname.lastname}` : 'N/A';
-            },
-            sortable: true,
-            width: '15%',
+            width: '20%',
         },
         {
             name: 'Description',
             selector: row => row.description,
             sortable: true,
-            width: '15%',
+            width: '20%',
+            cell: row => (
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
+                    {row.description}
+                </div>
+            ),
         },
         {
             name: 'Request Date',
             selector: row => row.requestStatus.requestDate || 'N/A',
             sortable: true,
-            width: '14%',
+            width: '20%',
         },
         {
             name: 'Status',
             selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
             sortable: true,
-            width: '10%',
+            width: '20%',
+            cell: row => (
+                <span className={`badge ${row.requestStatus.isConfirmed ? 'bg-success' : 'bg-warning'}`}>
+                    {row.requestStatus.isConfirmed ? "Confirmed" : "Pending"}
+                </span>
+            ),
         },
         {
             name: 'Actions',
@@ -330,13 +383,10 @@ function AdminNightPass() {
                         <i className="bi bi-info-circle-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
-                        className="btn btn-success btn-sm me-1"
-                        onClick={() => {
-                            setSelectedMessageId(row.messageid);
-                            setShowConfirmModal(true);
-                        }}
+                        className="btn btn-warning btn-sm me-1"
+                        onClick={() => handleEditClick(row)}
                     >
-                        <i className="bi bi-check-circle-fill text-white" style={{ fontSize: "0.875rem" }} />
+                        <i className="bi bi-pencil-fill text-white" style={{ fontSize: "0.875rem" }} />
                     </button>
                     <button
                         className="btn btn-danger btn-sm"
@@ -349,14 +399,73 @@ function AdminNightPass() {
                     </button>
                 </div>
             ),
-            width: '26%',
+            width: '20%',
             right: true,
         },
     ];
 
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowDropdown(false);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleLogout = async (e) => {
+        e.preventDefault();
+        setIsExiting(true);
+
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error('Logout failed');
+            }
+
+            navigate('/', { replace: true });
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            setIsExiting(false);
+        }
+    };
+
     return (
         <>
-            <AdminHeader />
+            {isExiting && (
+                <div
+                    className="loading-overlay"
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100vw',
+                        height: '100vh',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}
+                >
+                    <div className="spinner-container">
+                        <div className="spinner-border text-dark" role="status" style={{ width: '3rem', height: '3rem' }}>
+                            <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <div className="mt-3 text-dark">Logging out...</div>
+                    </div>
+                </div>
+            )}
+            <StudentHeader />
             <div className="d-flex flex-column min-vh-100">
                 <div style={{ height: '64px' }}></div>
                 <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
@@ -373,43 +482,25 @@ function AdminNightPass() {
                             }}>
                             <ul className="flex-column text-white text-decoration-none navbar-nav">
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Dashboard</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Account Management</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="#" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
+                                    <Link to="/StudentNightPass" className="btn btn-primary my-2 mx-1 me-2 d-flex align-items-center">
                                         <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6 text-start">Night Pass</span>
+                                        <span className="ms-2 fw-bold fs-6">Night Pass</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentLogbookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Logbook History</span>
+                                        <span className="ms-2 fw-bold fs-6">My Logbook History</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminMessage" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-envelope-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Message</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminGenerateReport" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Generate Report</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
@@ -420,44 +511,52 @@ function AdminNightPass() {
                         <div className="flex-grow-1" style={{ marginLeft: "250px" }}>
                             <div className="container-fluid p-4">
                                 <div className="d-flex justify-content-between align-items-center mb-4">
-                                    <h2 className="mb-0 fw-bold">Night Pass</h2>
-                                    <div className="text-muted">
-                                        <i className="bi bi-clock me-2"></i>
-                                        {new Date().toLocaleDateString('en-US', {
-                                            weekday: 'long',
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        })}
+                                    <h2 className="mb-0 fw-bold">Night Pass Requests</h2>
+                                    <div className="d-flex align-items-center gap-3">
+                                        <button
+                                            className="btn btn-primary d-flex align-items-center"
+                                            onClick={() => setShowRequestModal(true)}
+                                        >
+                                            <i className="bi bi-plus-circle me-2"></i>
+                                            New Request
+                                        </button>
+                                        <div className="text-muted">
+                                            <i className="bi bi-clock me-2"></i>
+                                            {new Date().toLocaleDateString('en-US', {
+                                                weekday: 'long',
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric'
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Summary Cards */}
                                 <div className="row g-4 mb-4">
-                                    {/* Total Night Passes */}
+                                    {/* Total Requests Card */}
                                     <div className="col-xl-4 col-md-6">
-                                        <div className="card border-0 shadow-sm h-100">
+                                        <div className="card border-0 shadow-sm">
                                             <div className="card-body">
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <div>
-                                                        <h6 className="text-muted mb-2">Total Night Passes</h6>
+                                                        <h6 className="text-muted mb-2">Total Requests</h6>
                                                         <h3 className="mb-0">{messages.length}</h3>
                                                     </div>
                                                     <div className="bg-primary bg-opacity-10 p-3 rounded">
-                                                        <i className="bi bi-card-list text-primary" style={{ fontSize: '1.5rem' }}></i>
+                                                        <i className="bi bi-chat-left-dots text-primary" style={{ fontSize: '1.5rem' }}></i>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Confirmed Passes */}
+                                    {/* Confirmed Requests Card */}
                                     <div className="col-xl-4 col-md-6">
-                                        <div className="card border-0 shadow-sm h-100">
+                                        <div className="card border-0 shadow-sm">
                                             <div className="card-body">
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <div>
-                                                        <h6 className="text-muted mb-2">Confirmed Passes</h6>
+                                                        <h6 className="text-muted mb-2">Confirmed Requests</h6>
                                                         <h3 className="mb-0">{messages.filter(message => message.requestStatus.isConfirmed).length}</h3>
                                                     </div>
                                                     <div className="bg-success bg-opacity-10 p-3 rounded">
@@ -468,13 +567,13 @@ function AdminNightPass() {
                                         </div>
                                     </div>
 
-                                    {/* Pending Passes */}
+                                    {/* Pending Requests Card */}
                                     <div className="col-xl-4 col-md-6">
-                                        <div className="card border-0 shadow-sm h-100">
+                                        <div className="card border-0 shadow-sm">
                                             <div className="card-body">
                                                 <div className="d-flex justify-content-between align-items-center">
                                                     <div>
-                                                        <h6 className="text-muted mb-2">Pending Passes</h6>
+                                                        <h6 className="text-muted mb-2">Pending Requests</h6>
                                                         <h3 className="mb-0">{messages.filter(message => !message.requestStatus.isConfirmed).length}</h3>
                                                     </div>
                                                     <div className="bg-warning bg-opacity-10 p-3 rounded">
@@ -486,7 +585,6 @@ function AdminNightPass() {
                                     </div>
                                 </div>
 
-                                {/* Tabs Navigation */}
                                 <div className="card border-0 shadow-sm mb-4">
                                     <div className="card-header bg-transparent border-0">
                                         <ul className="nav nav-tabs card-header-tabs">
@@ -517,7 +615,6 @@ function AdminNightPass() {
                                         </ul>
                                     </div>
                                     <div className="card-body p-0">
-                                        {/* Confirmed Night Passes Table */}
                                         {activeTab === 'confirmed' && (
                                             <>
                                                 <div className="p-4 border-bottom">
@@ -526,39 +623,9 @@ function AdminNightPass() {
                                                             <input
                                                                 className="form-control"
                                                                 type="text"
-                                                                placeholder="Message ID"
-                                                                name="messageid"
-                                                                value={confirmedInputs.messageid}
-                                                                onChange={handleConfirmedInputChange}
-                                                            />
-                                                        </div>
-                                                        <div className="col">
-                                                            <input
-                                                                className="form-control"
-                                                                type="text"
-                                                                placeholder="Student ID"
-                                                                name="studentid"
-                                                                value={confirmedInputs.studentid}
-                                                                onChange={handleConfirmedInputChange}
-                                                            />
-                                                        </div>
-                                                        <div className="col">
-                                                            <input
-                                                                className="form-control"
-                                                                type="text"
-                                                                placeholder="First Name"
-                                                                name="firstname"
-                                                                value={confirmedInputs.firstname}
-                                                                onChange={handleConfirmedInputChange}
-                                                            />
-                                                        </div>
-                                                        <div className="col">
-                                                            <input
-                                                                className="form-control"
-                                                                type="text"
-                                                                placeholder="Last Name"
-                                                                name="lastname"
-                                                                value={confirmedInputs.lastname}
+                                                                placeholder="Search by description..."
+                                                                name="description"
+                                                                value={confirmedInputs.description}
                                                                 onChange={handleConfirmedInputChange}
                                                             />
                                                         </div>
@@ -577,11 +644,7 @@ function AdminNightPass() {
                                                                 className="btn btn-danger"
                                                                 onClick={() => {
                                                                     setConfirmedInputs({
-                                                                        messageid: '',
-                                                                        studentid: '',
-                                                                        firstname: '',
-                                                                        lastname: '',
-                                                                        roomnumber: '',
+                                                                        description: '',
                                                                         date: ''
                                                                     });
                                                                 }}
@@ -607,7 +670,6 @@ function AdminNightPass() {
                                             </>
                                         )}
 
-                                        {/* Pending Night Passes Table */}
                                         {activeTab === 'pending' && (
                                             <>
                                                 <div className="p-4 border-bottom">
@@ -616,39 +678,9 @@ function AdminNightPass() {
                                                             <input
                                                                 className="form-control"
                                                                 type="text"
-                                                                placeholder="Message ID"
-                                                                name="messageid"
-                                                                value={pendingInputs.messageid}
-                                                                onChange={handlePendingInputChange}
-                                                            />
-                                                        </div>
-                                                        <div className="col">
-                                                            <input
-                                                                className="form-control"
-                                                                type="text"
-                                                                placeholder="Student ID"
-                                                                name="studentid"
-                                                                value={pendingInputs.studentid}
-                                                                onChange={handlePendingInputChange}
-                                                            />
-                                                        </div>
-                                                        <div className="col">
-                                                            <input
-                                                                className="form-control"
-                                                                type="text"
-                                                                placeholder="First Name"
-                                                                name="firstname"
-                                                                value={pendingInputs.firstname}
-                                                                onChange={handlePendingInputChange}
-                                                            />
-                                                        </div>
-                                                        <div className="col">
-                                                            <input
-                                                                className="form-control"
-                                                                type="text"
-                                                                placeholder="Last Name"
-                                                                name="lastname"
-                                                                value={pendingInputs.lastname}
+                                                                placeholder="Search by description..."
+                                                                name="description"
+                                                                value={pendingInputs.description}
                                                                 onChange={handlePendingInputChange}
                                                             />
                                                         </div>
@@ -667,11 +699,7 @@ function AdminNightPass() {
                                                                 className="btn btn-danger"
                                                                 onClick={() => {
                                                                     setPendingInputs({
-                                                                        messageid: '',
-                                                                        studentid: '',
-                                                                        firstname: '',
-                                                                        lastname: '',
-                                                                        roomnumber: '',
+                                                                        description: '',
                                                                         date: ''
                                                                     });
                                                                 }}
@@ -703,34 +731,6 @@ function AdminNightPass() {
                     </div>
                 </div>
             </div>
-
-            {/* Confirmation Modal */}
-            {showConfirmModal && (
-                <>
-                    <div className="modal fade show" style={{ display: 'block' }}>
-                        <div className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content">
-                                <div className="modal-header">
-                                    <h5 className="modal-title">Confirm Request</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowConfirmModal(false)} />
-                                </div>
-                                <div className="modal-body">
-                                    Are you sure you want to confirm this request?
-                                </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowConfirmModal(false)}>
-                                        Cancel
-                                    </button>
-                                    <button type="button" className="btn btn-success" onClick={handleAccept}>
-                                        Confirm
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="modal-backdrop fade show" />
-                </>
-            )}
 
             {/* Delete/Archive Confirmation Modal */}
             {showDeleteModal && (
@@ -800,8 +800,102 @@ function AdminNightPass() {
                     <div className="modal-backdrop fade show" />
                 </>
             )}
+
+            {/* New Request Modal */}
+            {showRequestModal && (
+                <>
+                    <div className="modal fade show" style={{ display: 'block' }}>
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">New Night Pass Request</h5>
+                                    <button type="button" className="btn-close" onClick={() => setShowRequestModal(false)} />
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label">Description</label>
+                                        <textarea
+                                            className="form-control"
+                                            name="description"
+                                            value={newRequest.description}
+                                            onChange={handleNewRequestChange}
+                                            rows="4"
+                                            placeholder="Enter your request details..."
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={() => setShowRequestModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={handleRequestSubmit}
+                                        disabled={!newRequest.description.trim()}
+                                    >
+                                        Submit Request
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show" />
+                </>
+            )}
+
+            {/* Edit Modal */}
+            {showEditModal && (
+                <>
+                    <div className="modal fade show" style={{ display: 'block' }}>
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Edit Night Pass Request</h5>
+                                    <button type="button" className="btn-close" onClick={() => setShowEditModal(false)} />
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label">Description</label>
+                                        <textarea
+                                            className="form-control"
+                                            value={editMessage.description}
+                                            onChange={(e) => setEditMessage({ ...editMessage, description: e.target.value })}
+                                            rows="4"
+                                            placeholder="Enter your request details..."
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary d-flex align-items-center"
+                                        onClick={handleEditSubmit}
+                                        disabled={!editMessage.description.trim() || isEditLoading}
+                                    >
+                                        {isEditLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save Changes'
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show" />
+                </>
+            )}
         </>
     );
 }
 
-export default AdminNightPass;
+export default StudentNightPass; 

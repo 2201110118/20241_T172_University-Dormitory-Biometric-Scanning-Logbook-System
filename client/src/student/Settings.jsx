@@ -1,13 +1,13 @@
-import React from "react";
+import React from 'react';
 import { Link } from 'react-router-dom';
-import AdminHeader from '../components/AdminHeader';
+import StudentHeader from '../components/StudentHeader';
 
-function AdminSettings() {
+function StudentSettings() {
     return (
         <>
-            <AdminHeader />
+            <StudentHeader />
             <div className="d-flex flex-column min-vh-100">
-                <div style={{ height: '64px' }}></div> {/* Spacer div to compensate for fixed header */}
+                <div style={{ height: '64px' }}></div>
                 <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
                     <div className="d-flex" style={{ minHeight: 'calc(100vh - 64px)' }}>
                         <nav className="sidebar bg-dark"
@@ -22,39 +22,21 @@ function AdminSettings() {
                             }}>
                             <ul className="flex-column text-white text-decoration-none navbar-nav">
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentDashboard" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-speedometer" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Dashboard</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminAccountManagement" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-kanban-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Account Management</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Night Pass</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminLogBookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentLogbookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Logbook History</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminMessage" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-envelope-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Message</span>
-                                    </Link>
-                                </li>
-                                <li className="nav-item border-bottom border-white">
-                                    <Link to="/AdminGenerateReport" className="nav-link my-1 mx-2 d-flex align-items-center">
-                                        <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Generate Report</span>
+                                        <span className="ms-2 fw-bold fs-6">My Logbook History</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
@@ -96,4 +78,4 @@ function AdminSettings() {
     );
 }
 
-export default AdminSettings;
+export default StudentSettings; 

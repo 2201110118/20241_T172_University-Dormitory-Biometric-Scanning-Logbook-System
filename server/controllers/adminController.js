@@ -1,20 +1,5 @@
 import Admin from '../models/admin.js'
-import axios from 'axios'
-
-const verifyRecaptcha = async (token) => {
-  try {
-    const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
-      params: {
-        secret: process.env.RECAPTCHA_SECRET_KEY,
-        response: token
-      }
-    });
-    return response.data.success;
-  } catch (error) {
-    console.error('reCAPTCHA verification error:', error);
-    return false;
-  }
-};
+import bcrypt from 'bcrypt'
 
 // Get all admins from the database
 const getAdmins = async (req, res) => {
@@ -58,13 +43,7 @@ const getAdmin = async (req, res) => {
 // Add a new admin to the database
 const postAdmin = async (req, res) => {
   try {
-    const { username, password, captchaToken } = req.body;
-
-    // Verify reCAPTCHA
-    const isRecaptchaValid = await verifyRecaptcha(captchaToken);
-    if (!isRecaptchaValid) {
-      return res.status(400).json({ message: 'reCAPTCHA verification failed' });
-    }
+    const { username, password } = req.body;
 
     // Check if username already exists
     const existingAdmin = await Admin.findOne({ username });
@@ -119,36 +98,55 @@ const postAdmin = async (req, res) => {
 // Update an existing admin record
 const updateAdmin = async (req, res) => {
   try {
-    // Filter out fields that have empty values
-    const updates = Object.fromEntries(
-      Object.entries(req.body).filter(([_, value]) => value !== "")
+    const { currentPassword, password, ...updates } = req.body;
+
+    if (password) {
+      // Find admin and include the password field
+      const admin = await Admin.findById(req.params.id).select('+password');
+      if (!admin) {
+        return res.status(404).json({ message: "Admin not found" });
+      }
+
+      // Verify current password
+      const isMatch = await admin.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      updates.password = hashedPassword;
+    }
+
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, value]) => value !== "")
     );
 
-    // Check if there are any valid fields to update
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(cleanedUpdates).length === 0 && !password) {
       return res.status(400).json({ message: "No valid fields to update." });
     }
 
-    // Attempt to find and update the admin by ID
-    // Return the updated document and validate the update according to the schema
-    const updatedAdmin = await Admin.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true
-    });
+    const updatedAdmin = await Admin.findByIdAndUpdate(
+      req.params.id,
+      { $set: cleanedUpdates },
+      {
+        new: true,
+        runValidators: true
+      }
+    );
 
-    // Check if the admin was found and updated
     if (!updatedAdmin) {
       return res.status(404).json({ message: "Admin not found" });
     }
 
-    // Respond with the updated admin record
     res.status(200).json(updatedAdmin);
   } catch (error) {
-    // Log the error for debugging
     console.error('Error updating admin:', error);
-
-    // Return a server error response
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message
+    });
   }
 };
 

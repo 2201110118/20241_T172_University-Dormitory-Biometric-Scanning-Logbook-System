@@ -1,24 +1,36 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Modal } from 'bootstrap';
+import { useAuth } from '../context/AuthContext';
 import ReCAPTCHA from "react-google-recaptcha";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
-import logo from '../assets/logo.png';
-import logotitle from '../assets/logotitle.png';
+import BuksuLogo from '../components/BuksuLogo';
 import './AdminAuth.css';
+
+// Debug logging function
+const debugLog = (message, data = null) => {
+    if (import.meta.env.DEV) {
+        console.log(`[reCAPTCHA Client] ${message}`);
+        if (data) {
+            console.log(JSON.stringify(data, null, 2));
+        }
+    }
+};
 
 function AdminLogin() {
     const navigate = useNavigate();
+    const { login } = useAuth();
+    const recaptchaRef = useRef(null);
     const [formData, setFormData] = useState({
         username: '',
-        password: ''
+        password: '',
+        recaptchaToken: ''
     });
     const [error, setError] = useState('');
     const [isVisible, setIsVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorModal, setErrorModal] = useState(null);
-    const [captchaToken, setCaptchaToken] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
@@ -26,6 +38,14 @@ function AdminLogin() {
         // Initialize modal
         const modal = new Modal(document.getElementById('errorModal'));
         setErrorModal(modal);
+
+        // Log reCAPTCHA initialization
+        debugLog('reCAPTCHA component initialized');
+        debugLog('Site Key Configuration', {
+            siteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY.substring(0, 10) + '...',
+            environment: import.meta.env.MODE
+        });
+
         return () => {
             setIsVisible(false);
             if (errorModal) {
@@ -41,8 +61,30 @@ function AdminLogin() {
         });
     };
 
-    const handleCaptchaChange = (token) => {
-        setCaptchaToken(token);
+    const handleRecaptchaChange = (token) => {
+        debugLog(token ? 'reCAPTCHA token received' : 'reCAPTCHA token cleared', {
+            tokenLength: token ? token.length : 0,
+            timestamp: new Date().toISOString()
+        });
+
+        setFormData(prev => ({
+            ...prev,
+            recaptchaToken: token || ''
+        }));
+    };
+
+    const handleRecaptchaError = () => {
+        debugLog('reCAPTCHA error occurred', {
+            timestamp: new Date().toISOString()
+        });
+        setError('reCAPTCHA error occurred. Please try again.');
+    };
+
+    const handleRecaptchaExpired = () => {
+        debugLog('reCAPTCHA token expired', {
+            timestamp: new Date().toISOString()
+        });
+        setFormData(prev => ({ ...prev, recaptchaToken: '' }));
     };
 
     const handleSubmit = async (e) => {
@@ -50,40 +92,37 @@ function AdminLogin() {
         setIsLoading(true);
         setError('');
 
-        if (!captchaToken) {
+        debugLog('Login attempt started', {
+            username: formData.username,
+            hasRecaptchaToken: !!formData.recaptchaToken,
+            timestamp: new Date().toISOString()
+        });
+
+        if (!formData.recaptchaToken) {
+            debugLog('Login failed: No reCAPTCHA token');
             setError('Please complete the reCAPTCHA verification');
             setIsLoading(false);
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/login/admin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...formData,
-                    captchaToken
-                }),
-                credentials: 'include'
+            debugLog('Sending login request to server');
+            await login(formData, 'admin');
+            debugLog('Login successful', {
+                username: formData.username,
+                timestamp: new Date().toISOString()
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.message || 'Login failed');
-                setIsLoading(false);
-                return;
-            }
-
-            localStorage.setItem('adminLoggedIn', 'true');
-            localStorage.setItem('admin', JSON.stringify(data.admin));
             navigate('/AdminDashboard');
-
         } catch (error) {
+            debugLog('Login error', {
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
             console.error('Login error:', error);
-            setError('Unable to connect to the server. Please try again.');
+            setError(error.message || 'Unable to connect to the server. Please try again.');
+            // Reset reCAPTCHA on error
+            recaptchaRef.current?.reset();
+            setFormData(prev => ({ ...prev, recaptchaToken: '' }));
         } finally {
             setIsLoading(false);
         }
@@ -138,33 +177,28 @@ function AdminLogin() {
                     {/* Left Side - Image */}
                     <div
                         style={{
-                            backgroundImage: `url(${wallpaper2})`
+                            backgroundImage: `url(${wallpaper2})`,
+                            position: 'relative'
                         }}
                     >
-                        <div
-                            className="position-absolute top-50 start-50 translate-middle bg-white rounded d-flex flex-column justify-content-center align-items-center"
+                        <BuksuLogo />
+                        <Link
+                            to="/"
+                            className="btn btn-light position-absolute bottom-0 start-0 m-4 d-flex align-items-center"
                             style={{
-                                width: '240px',
-                                height: '280px'
+                                backgroundColor: '#ffffff',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                gap: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                color: '#6c757d',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid rgba(0,0,0,0.1)'
                             }}
                         >
-                            <img
-                                src={logotitle}
-                                alt="Logo Title"
-                                style={{
-                                    maxWidth: '200px',
-                                    height: 'auto'
-                                }}
-                            />
-                            <img
-                                src={logo}
-                                alt="Logo"
-                                style={{
-                                    maxWidth: '160px',
-                                    height: 'auto'
-                                }}
-                            />
-                        </div>
+                            <i className="bi bi-house-door"></i>
+                            <span>Return to Homepage</span>
+                        </Link>
                     </div>
 
                     {/* Right Side - Form */}
@@ -231,8 +265,11 @@ function AdminLogin() {
                             </div>
                             <div className="mb-4 d-flex justify-content-center">
                                 <ReCAPTCHA
+                                    ref={recaptchaRef}
                                     sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                                    onChange={handleCaptchaChange}
+                                    onChange={handleRecaptchaChange}
+                                    onError={handleRecaptchaError}
+                                    onExpired={handleRecaptchaExpired}
                                 />
                             </div>
                             <div className="d-flex justify-content-center">
@@ -240,6 +277,7 @@ function AdminLogin() {
                                     type="submit"
                                     className="btn btn-primary position-relative"
                                     style={{ width: '150px' }}
+                                    disabled={!formData.recaptchaToken}
                                 >
                                     Login
                                 </button>
@@ -248,12 +286,6 @@ function AdminLogin() {
                                 <span className="text-muted">Don't have an account? </span>
                                 <Link to="/admin/signup" className="text-primary text-decoration-none">
                                     Sign up
-                                </Link>
-                            </div>
-                            <div className="text-center mt-3">
-                                <Link to="/" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center" style={{ gap: '0.5rem' }}>
-                                    <i className="bi bi-house-door"></i>
-                                    <span>Return to Homepage</span>
                                 </Link>
                             </div>
                         </form>

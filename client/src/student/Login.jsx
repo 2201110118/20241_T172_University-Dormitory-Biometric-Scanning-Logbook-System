@@ -1,28 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Modal } from 'bootstrap';
-import ReCAPTCHA from "react-google-recaptcha";
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
+import { useAuth } from '../context/AuthContext';
+import ReCAPTCHA from "react-google-recaptcha";
 import wallpaper from '../assets/wallpaper.png';
 import wallpaper2 from '../assets/wallpaper2.png';
-import logo from '../assets/logo.png';
-import logotitle from '../assets/logotitle.png';
+import BuksuLogo from '../components/BuksuLogo';
 import './StudentAuth.css';
+
+// Debug logging function
+const debugLog = (message, data = null) => {
+    if (import.meta.env.DEV) {
+        console.log(`[reCAPTCHA Client] ${message}`);
+        if (data) {
+            console.log(JSON.stringify(data, null, 2));
+        }
+    }
+};
 
 function StudentLogin() {
     const navigate = useNavigate();
+    const { login } = useAuth();
+    const recaptchaRef = useRef(null);
     const [formData, setFormData] = useState({
         studentid: '',
-        password: ''
+        password: '',
+        recaptchaToken: ''
     });
     const [error, setError] = useState('');
     const [isVisible, setIsVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorModal, setErrorModal] = useState(null);
-    const [captchaToken, setCaptchaToken] = useState(null);
     const [contentLoaded, setContentLoaded] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
+    const [recaptchaError, setRecaptchaError] = useState(null);
 
     useEffect(() => {
         // Set a small delay to ensure DOM is ready
@@ -34,11 +48,33 @@ function StudentLogin() {
         const modal = new Modal(document.getElementById('errorModal'));
         setErrorModal(modal);
 
+        // Log reCAPTCHA initialization
+        debugLog('reCAPTCHA component initialized');
+        debugLog('Site Key Configuration', {
+            siteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY.substring(0, 10) + '...',
+            environment: import.meta.env.MODE
+        });
+
+        // Add reCAPTCHA script load error handler
+        const handleRecaptchaLoadError = () => {
+            setRecaptchaError('Failed to load reCAPTCHA. Please refresh the page or check your internet connection.');
+            debugLog('reCAPTCHA script failed to load');
+        };
+
+        // Monitor reCAPTCHA script loading
+        const recaptchaScript = document.querySelector('script[src*="recaptcha"]');
+        if (recaptchaScript) {
+            recaptchaScript.addEventListener('error', handleRecaptchaLoadError);
+        }
+
         return () => {
             clearTimeout(timer);
             setIsVisible(false);
             if (errorModal) {
                 errorModal.dispose();
+            }
+            if (recaptchaScript) {
+                recaptchaScript.removeEventListener('error', handleRecaptchaLoadError);
             }
         };
     }, []);
@@ -50,16 +86,60 @@ function StudentLogin() {
         });
     };
 
-    const handleCaptchaChange = (token) => {
-        setCaptchaToken(token);
+    const handleRecaptchaChange = (token) => {
+        debugLog(token ? 'reCAPTCHA token received' : 'reCAPTCHA token cleared', {
+            tokenLength: token ? token.length : 0,
+            timestamp: new Date().toISOString()
+        });
+
+        setFormData(prev => ({
+            ...prev,
+            recaptchaToken: token || ''
+        }));
+    };
+
+    const handleRecaptchaError = () => {
+        debugLog('reCAPTCHA error occurred', {
+            timestamp: new Date().toISOString()
+        });
+        setError('reCAPTCHA error occurred. Please try again.');
+    };
+
+    const handleRecaptchaExpired = () => {
+        debugLog('reCAPTCHA token expired', {
+            timestamp: new Date().toISOString()
+        });
+        setFormData(prev => ({ ...prev, recaptchaToken: '' }));
+    };
+
+    const handleRecaptchaLoad = () => {
+        setRecaptchaLoaded(true);
+        setRecaptchaError(null);
+        debugLog('reCAPTCHA loaded successfully');
     };
 
     const handleGoogleSuccess = async (credentialResponse) => {
         setIsLoading(true);
         setError('');
 
+        debugLog('Google login attempt started', {
+            timestamp: new Date().toISOString()
+        });
+
+        if (!formData.recaptchaToken) {
+            debugLog('Google login failed: No reCAPTCHA token');
+            setError('Please complete the reCAPTCHA verification');
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const decoded = jwtDecode(credentialResponse.credential);
+
+            debugLog('Google credential decoded', {
+                gmail: decoded.email,
+                timestamp: new Date().toISOString()
+            });
 
             // First, check if a student with this email exists
             const checkResponse = await fetch('http://localhost:5000/api/student/check-google', {
@@ -76,37 +156,27 @@ function StudentLogin() {
 
             if (checkData.exists) {
                 // If student exists, attempt to login
-                const loginResponse = await fetch('http://localhost:5000/api/login/student/google', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
+                try {
+                    debugLog('Sending Google login request to server');
+                    await login({
                         googleId: decoded.sub,
-                        gmail: decoded.email
-                    }),
-                    credentials: 'include'
-                });
-
-                const loginData = await loginResponse.json();
-
-                if (!loginResponse.ok) {
-                    if (loginResponse.status === 403 && !loginData.isConfirmed) {
+                        gmail: decoded.email,
+                        recaptchaToken: formData.recaptchaToken
+                    }, 'student/google');
+                    debugLog('Google login successful');
+                    navigate('/StudentDashboard');
+                } catch (error) {
+                    if (error.message.includes('pending confirmation')) {
                         document.getElementById('errorModalTitle').textContent = 'Account Not Confirmed';
                         document.getElementById('errorModalBody').textContent = 'Your account is pending confirmation. Please wait for admin approval.';
                         errorModal.show();
                     } else {
-                        setError(loginData.message || 'Login failed');
+                        setError(error.message || 'Login failed');
                     }
-                    setIsLoading(false);
-                    return;
                 }
-
-                localStorage.setItem('studentLoggedIn', 'true');
-                localStorage.setItem('student', JSON.stringify(loginData.student));
-                navigate('/StudentDashboard');
             } else {
                 // If student doesn't exist, redirect to signup with Google data
+                debugLog('Redirecting to signup: Student not found');
                 navigate('/student/signup', {
                     state: {
                         googleData: {
@@ -119,6 +189,10 @@ function StudentLogin() {
                 });
             }
         } catch (error) {
+            debugLog('Google login error', {
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
             console.error('Google login error:', error);
             setError('Unable to process Google login. Please try again.');
         } finally {
@@ -127,6 +201,9 @@ function StudentLogin() {
     };
 
     const handleGoogleError = () => {
+        debugLog('Google login failed', {
+            timestamp: new Date().toISOString()
+        });
         console.error('Google login failed');
         setError('Google login failed. Please try again.');
     };
@@ -136,46 +213,42 @@ function StudentLogin() {
         setIsLoading(true);
         setError('');
 
-        if (!captchaToken) {
+        debugLog('Login attempt started', {
+            studentid: formData.studentid,
+            hasRecaptchaToken: !!formData.recaptchaToken,
+            timestamp: new Date().toISOString()
+        });
+
+        if (!formData.recaptchaToken) {
+            debugLog('Login failed: No reCAPTCHA token');
             setError('Please complete the reCAPTCHA verification');
             setIsLoading(false);
             return;
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/login/student', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...formData,
-                    captchaToken
-                }),
-                credentials: 'include'
+            debugLog('Sending login request to server');
+            await login(formData, 'student');
+            debugLog('Login successful', {
+                studentid: formData.studentid,
+                timestamp: new Date().toISOString()
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                if (response.status === 403 && data.isConfirmed === false) {
-                    document.getElementById('errorModalTitle').textContent = 'Account Not Confirmed';
-                    document.getElementById('errorModalBody').textContent = 'Your account is pending confirmation. Please wait for admin approval.';
-                    errorModal.show();
-                } else {
-                    setError(data.message || 'Login failed');
-                }
-                setIsLoading(false);
-                return;
-            }
-
-            localStorage.setItem('studentLoggedIn', 'true');
-            localStorage.setItem('student', JSON.stringify(data.student));
             navigate('/StudentDashboard');
-
         } catch (error) {
-            console.error('Login error:', error);
-            setError('Unable to connect to the server. Please try again.');
+            debugLog('Login error', {
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+            if (error.message.includes('pending confirmation')) {
+                document.getElementById('errorModalTitle').textContent = 'Account Not Confirmed';
+                document.getElementById('errorModalBody').textContent = 'Your account is pending confirmation. Please wait for admin approval.';
+                errorModal.show();
+            } else {
+                setError(error.message || 'Login failed');
+            }
+            // Reset reCAPTCHA on error
+            recaptchaRef.current?.reset();
+            setFormData(prev => ({ ...prev, recaptchaToken: '' }));
         } finally {
             setIsLoading(false);
         }
@@ -230,37 +303,34 @@ function StudentLogin() {
                     {/* Left Side - Image */}
                     <div
                         style={{
-                            backgroundImage: `url(${wallpaper2})`
+                            backgroundImage: `url(${wallpaper2})`,
+                            position: 'relative'
                         }}
                     >
-                        <div
-                            className="position-absolute top-50 start-50 translate-middle bg-white rounded d-flex flex-column justify-content-center align-items-center"
+                        <BuksuLogo />
+                        <Link
+                            to="/"
+                            className="btn btn-light position-absolute bottom-0 start-0 m-4 d-flex align-items-center"
                             style={{
-                                width: '240px',
-                                height: '280px'
+                                backgroundColor: '#ffffff',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                gap: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '0.5rem',
+                                color: '#6c757d',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid rgba(0,0,0,0.1)'
                             }}
                         >
-                            <img
-                                src={logotitle}
-                                alt="Logo Title"
-                                style={{
-                                    maxWidth: '200px',
-                                    height: 'auto',
-                                }}
-                            />
-                            <img
-                                src={logo}
-                                alt="Logo"
-                                style={{
-                                    maxWidth: '160px',
-                                    height: 'auto'
-                                }}
-                            />
-                        </div>
+                            <i className="bi bi-house-door"></i>
+                            <span>Return to Homepage</span>
+                        </Link>
                     </div>
 
                     {/* Right Side - Form */}
                     <div>
+                        <i className="bi bi-person-circle mb-3" style={{ fontSize: '3rem' }}></i>
+                        <h4 className="mb-4">Student Login</h4>
                         {error && (
                             <div
                                 className="alert alert-danger py-1 px-2 d-flex align-items-center"
@@ -281,35 +351,6 @@ function StudentLogin() {
                             </div>
                         )}
 
-                        <i className="bi bi-person-circle mb-3" style={{ fontSize: '3rem' }}></i>
-                        <h4 className="mb-4">Student Login</h4>
-
-                        {/* Google Sign-In Button */}
-                        <div className="w-100 mb-4">
-                            <div className="d-flex align-items-center justify-content-center mb-3">
-                                <hr className="flex-grow-1 me-3" />
-                                <span className="text-muted">Sign in with</span>
-                                <hr className="flex-grow-1 ms-3" />
-                            </div>
-                            <div className="d-flex justify-content-center">
-                                <GoogleLogin
-                                    onSuccess={handleGoogleSuccess}
-                                    onError={handleGoogleError}
-                                    useOneTap
-                                    shape="rectangular"
-                                    theme="filled_blue"
-                                    size="large"
-                                    width="250px"
-                                />
-                            </div>
-                            <div className="d-flex align-items-center justify-content-center my-3">
-                                <hr className="flex-grow-1 me-3" />
-                                <span className="text-muted">or</span>
-                                <hr className="flex-grow-1 ms-3" />
-                            </div>
-                        </div>
-
-                        {/* Regular Login Form */}
                         <form className="w-100" onSubmit={handleSubmit}>
                             <div className="mb-3">
                                 <input
@@ -348,10 +389,14 @@ function StudentLogin() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="mb-4 d-flex justify-content-center">
+                            <div className="recaptcha-container">
                                 <ReCAPTCHA
+                                    ref={recaptchaRef}
                                     sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                                    onChange={handleCaptchaChange}
+                                    onChange={handleRecaptchaChange}
+                                    onError={handleRecaptchaError}
+                                    onExpired={handleRecaptchaExpired}
+                                    onLoad={handleRecaptchaLoad}
                                 />
                             </div>
                             <div className="d-flex justify-content-center">
@@ -359,6 +404,7 @@ function StudentLogin() {
                                     type="submit"
                                     className="btn btn-primary position-relative"
                                     style={{ width: '150px' }}
+                                    disabled={!formData.recaptchaToken}
                                 >
                                     Login
                                 </button>
@@ -370,10 +416,19 @@ function StudentLogin() {
                                 </Link>
                             </div>
                             <div className="text-center mt-3">
-                                <Link to="/" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center" style={{ gap: '0.5rem' }}>
-                                    <i className="bi bi-house-door"></i>
-                                    <span>Return to Homepage</span>
-                                </Link>
+                                <div className="divider">
+                                    <hr />
+                                    <span>OR</span>
+                                    <hr />
+                                </div>
+                                <div className="mt-3">
+                                    <GoogleLogin
+                                        clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+                                        onSuccess={handleGoogleSuccess}
+                                        onError={handleGoogleError}
+                                        useOneTap={true}
+                                    />
+                                </div>
                             </div>
                         </form>
                     </div>

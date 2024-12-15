@@ -3,19 +3,100 @@ import { Link, useNavigate } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
 import TableLoader from '../components/TableLoader';
 import customTableStyles from '../components/TableStyles';
+import StudentHeader from '../components/StudentHeader';
 
 function StudentDashboard() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [isExiting, setIsExiting] = useState(false);
     const [studentName, setStudentName] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [messages, setMessages] = useState([]);
+    const [logs, setLogs] = useState([]);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const student = JSON.parse(localStorage.getItem('student'));
-        if (student && student.fullname) {
-            setStudentName(`${student.fullname.firstname} ${student.fullname.lastname}`);
-        }
+        // Get student info from session
+        fetch('http://localhost:5000/api/auth/check-session', {
+            credentials: 'include'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.isAuthenticated && data.user && data.user.fullname) {
+                    setStudentName(`${data.user.fullname.firstname} ${data.user.fullname.lastname}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching student info:', error);
+            });
+    }, []);
+
+    useEffect(() => {
+        const fetchMessages = async () => {
+            try {
+                // First get the student's ID from the session
+                const sessionResponse = await fetch("http://localhost:5000/api/auth/check-session", {
+                    credentials: 'include'
+                });
+                const sessionData = await sessionResponse.json();
+
+                if (sessionData.isAuthenticated && sessionData.user) {
+                    // Then fetch all messages
+                    const response = await fetch("http://localhost:5000/api/message");
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+
+                    // Filter messages for the current student
+                    const studentMessages = data.filter(message =>
+                        message.student?.studentid === sessionData.user.studentid && !message.archive
+                    );
+
+                    const sortedData = studentMessages.sort((a, b) =>
+                        new Date(b.requestStatus.requestDate) - new Date(a.requestStatus.requestDate)
+                    );
+                    setMessages(sortedData);
+                }
+            } catch (error) {
+                console.error(`Error fetching messages: ${error}`);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchMessages();
+    }, []);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                // First get the student's ID from the session
+                const sessionResponse = await fetch("http://localhost:5000/api/auth/check-session", {
+                    credentials: 'include'
+                });
+                const sessionData = await sessionResponse.json();
+
+                if (sessionData.isAuthenticated && sessionData.user) {
+                    // Then fetch all logs
+                    const response = await fetch('http://localhost:5000/api/log/');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+
+                    // Filter logs for the current student
+                    const studentLogs = data.filter(log => 
+                        log.student?.studentid === sessionData.user.studentid && !log.archive
+                    );
+
+                    const sortedData = studentLogs.sort((a, b) => 
+                        new Date(b.timestamp.date) - new Date(a.timestamp.date)
+                    ).slice(0, 5); // Only take the 5 most recent logs
+                    setLogs(sortedData);
+                }
+            } catch (error) {
+                console.error(`Error fetching logs: ${error}`);
+            }
+        };
+
+        fetchLogs();
     }, []);
 
     useEffect(() => {
@@ -31,72 +112,49 @@ function StudentDashboard() {
         };
     }, []);
 
-    const handleLogout = (e) => {
+    const handleLogout = async (e) => {
         e.preventDefault();
         setIsExiting(true);
 
-        document.documentElement.style.overflow = '';
-        document.documentElement.style.paddingRight = '';
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-        document.getElementById('root').style.overflow = '';
-        document.getElementById('root').style.paddingRight = '';
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
 
-        setTimeout(() => {
-            localStorage.removeItem('studentLoggedIn');
-            localStorage.removeItem('student');
+            if (!response.ok) {
+                throw new Error('Logout failed');
+            }
+
             navigate('/', { replace: true });
-
-            setTimeout(() => {
-                window.scrollTo(0, 0);
-                document.documentElement.style.overflow = '';
-                document.body.style.overflow = '';
-            }, 0);
-        }, 500);
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            setIsExiting(false);
+        }
     };
+
+    const logColumns = [
+        {
+            name: 'Log Type',
+            selector: row => row.logType,
+            width: '30%',
+        },
+        {
+            name: 'Date',
+            selector: row => row.timestamp?.date || 'N/A',
+            width: '35%',
+        },
+        {
+            name: 'Time',
+            selector: row => row.timestamp?.time || 'N/A',
+            width: '35%',
+            right: true,
+        }
+    ];
 
     return (
         <>
-            <style>
-                {`
-                    @keyframes slideIn {
-                        from {
-                            opacity: 0;
-                            transform: translateY(-10px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-                    
-                    .dropdown-menu.show {
-                        animation: slideIn 0.2s ease forwards;
-                    }
-                    
-                    .dropdown-item {
-                        transition: background-color 0.2s ease;
-                    }
-                    
-                    .dropdown-item:hover {
-                        background-color: #f8f9fa;
-                    }
-
-                    .header-dropdown {
-                        position: relative;
-                    }
-
-                    .header-dropdown .dropdown-menu {
-                        position: absolute;
-                        right: 0;
-                        top: 100%;
-                        margin-top: 0.5rem;
-                        min-width: 200px;
-                        transform-origin: top right;
-                        z-index: 1030;
-                    }
-                `}
-            </style>
             {isExiting && (
                 <div
                     className="loading-overlay"
@@ -121,54 +179,9 @@ function StudentDashboard() {
                     </div>
                 </div>
             )}
-            {/* Header */}
-            <header className="navbar navbar-expand-lg navbar-light bg-white fixed-top border-bottom shadow" style={{ height: '64px', zIndex: 1030 }}>
-                <div className="container-fluid px-4">
-                    <Link className="navbar-brand d-flex align-items-center" to="/StudentDashboard">
-                        <img
-                            src="https://upload.wikimedia.org/wikipedia/en/8/86/Shield_logo_of_Bukidnon_State_University.png"
-                            alt="Buksu Logo"
-                            width="48"
-                            height="48"
-                        />
-                        <div className="multiline-text ms-2 fw-bold" style={{ lineHeight: "1.1rem" }}>
-                            <span style={{ color: "#0056b3" }}>Buksu</span>
-                            <br />
-                            <span style={{ color: "#003366" }}>Mahogany Dormitory</span>
-                        </div>
-                    </Link>
-                    <div className="d-flex align-items-center">
-                        <div className="header-dropdown" ref={dropdownRef}>
-                            <button
-                                className="btn btn-light dropdown-toggle d-flex align-items-center"
-                                onClick={() => setShowDropdown(!showDropdown)}
-                                type="button"
-                                aria-expanded={showDropdown}
-                            >
-                                <i className="bi bi-person-circle me-2" style={{ fontSize: '1.5rem' }}></i>
-                                <span>{studentName}</span>
-                            </button>
-                            <div className={`dropdown-menu shadow ${showDropdown ? 'show' : ''}`}>
-                                <Link to="/student/account-settings" className="dropdown-item">
-                                    <i className="bi bi-gear me-2"></i>
-                                    Account Settings
-                                </Link>
-                                <hr className="dropdown-divider" />
-                                <button
-                                    className="dropdown-item text-danger"
-                                    onClick={handleLogout}
-                                >
-                                    <i className="bi bi-box-arrow-right me-2"></i>
-                                    Logout
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
+            <StudentHeader />
             <div className="d-flex flex-column min-vh-100">
-                <div style={{ height: '64px' }}></div> {/* Spacer div to compensate for fixed header */}
+                <div style={{ height: '64px' }}></div>
                 <div className="flex-grow-1" style={{ backgroundColor: "#ebedef" }}>
                     <div className="d-flex" style={{ minHeight: 'calc(100vh - 64px)' }}>
                         {/* Sidebar Navigation */}
@@ -190,19 +203,19 @@ function StudentDashboard() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/student/night-pass" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentNightPass" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-chat-left-dots-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Night Pass</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/student/logbook" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentLogbookHistory" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clock-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">My Logbook</span>
+                                        <span className="ms-2 fw-bold fs-6">My Logbook History</span>
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="/student/settings" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/StudentSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
@@ -287,13 +300,24 @@ function StudentDashboard() {
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                                 <h5 className="mb-0">Recent Logs</h5>
-                                                <Link to="/student/logbook" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
-                                                    <i className="bi bi-clock-history me-2"></i>
-                                                    <span>View All Logs</span>
+                                                <Link to="/StudentLogbookHistory" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
+                                                    View All
+                                                    <i className="bi bi-arrow-right ms-2"></i>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
-                                                {/* Table content will be added later */}
+                                                <DataTable
+                                                    columns={logColumns}
+                                                    data={logs}
+                                                    customStyles={customTableStyles}
+                                                    responsive
+                                                    highlightOnHover
+                                                    striped
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
+                                                    noDataComponent="No logs found"
+                                                    dense
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -303,13 +327,130 @@ function StudentDashboard() {
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                                                 <h5 className="mb-0">Night Pass Requests</h5>
-                                                <Link to="/student/night-pass" className="btn btn-sm btn-outline-primary d-inline-flex align-items-center">
+                                                <Link
+                                                    to="/StudentNightPass"
+                                                    state={{ activeTab: 'pending' }}
+                                                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center"
+                                                >
                                                     <i className="bi bi-chat-left-dots me-2"></i>
                                                     <span>View All Requests</span>
                                                 </Link>
                                             </div>
                                             <div className="card-body p-0">
-                                                {/* Table content will be added later */}
+                                                <DataTable
+                                                    columns={[
+                                                        {
+                                                            name: 'Message ID',
+                                                            selector: row => row.messageid,
+                                                            sortable: false,
+                                                        },
+                                                        {
+                                                            name: 'Description',
+                                                            selector: row => row.description,
+                                                            sortable: false,
+                                                            cell: row => (
+                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
+                                                                    {row.description}
+                                                                </div>
+                                                            ),
+                                                        },
+                                                        {
+                                                            name: 'Date',
+                                                            selector: row => row.requestStatus.requestDate,
+                                                            sortable: false,
+                                                        },
+                                                        {
+                                                            name: 'Status',
+                                                            selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
+                                                            sortable: false,
+                                                            cell: row => (
+                                                                <span className="badge bg-warning">Pending</span>
+                                                            ),
+                                                            right: true,
+                                                        }
+                                                    ]}
+                                                    data={messages
+                                                        .filter(message => !message.requestStatus.isConfirmed)
+                                                        .sort((a, b) => new Date(b.requestStatus.requestDate) - new Date(a.requestStatus.requestDate))
+                                                        .slice(0, 3)}
+                                                    customStyles={customTableStyles}
+                                                    responsive
+                                                    highlightOnHover
+                                                    noDataComponent="No pending requests found"
+                                                    pagination={false}
+                                                    dense
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Night Pass Confirmations */}
+                                    <div className="col-12">
+                                        <div className="card border-0 shadow-sm h-100">
+                                            <div className="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                                <h5 className="mb-0">Night Pass Confirmations</h5>
+                                                <Link
+                                                    to="/StudentNightPass"
+                                                    state={{ activeTab: 'confirmed' }}
+                                                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center"
+                                                >
+                                                    <i className="bi bi-check-circle me-2"></i>
+                                                    <span>View All Confirmations</span>
+                                                </Link>
+                                            </div>
+                                            <div className="card-body p-0">
+                                                <DataTable
+                                                    columns={[
+                                                        {
+                                                            name: 'Message ID',
+                                                            selector: row => row.messageid,
+                                                            sortable: false,
+                                                        },
+                                                        {
+                                                            name: 'Description',
+                                                            selector: row => row.description,
+                                                            sortable: false,
+                                                            cell: row => (
+                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>
+                                                                    {row.description}
+                                                                </div>
+                                                            ),
+                                                        },
+                                                        {
+                                                            name: 'Request Date',
+                                                            selector: row => row.requestStatus.requestDate,
+                                                            sortable: false,
+                                                        },
+                                                        {
+                                                            name: 'Confirmation Date',
+                                                            selector: row => row.requestStatus.confirmationDate,
+                                                            sortable: false,
+                                                        },
+                                                        {
+                                                            name: 'Status',
+                                                            selector: row => row.requestStatus.isConfirmed ? "Confirmed" : "Pending",
+                                                            sortable: false,
+                                                            cell: row => (
+                                                                <span className="badge bg-success">Confirmed</span>
+                                                            ),
+                                                            right: true,
+                                                        }
+                                                    ]}
+                                                    data={messages
+                                                        .filter(message => message.requestStatus.isConfirmed)
+                                                        .sort((a, b) => new Date(b.requestStatus.confirmationDate) - new Date(a.requestStatus.confirmationDate))
+                                                        .slice(0, 3)}
+                                                    customStyles={customTableStyles}
+                                                    responsive
+                                                    highlightOnHover
+                                                    noDataComponent="No confirmed requests found"
+                                                    pagination={false}
+                                                    dense
+                                                    progressPending={isLoading}
+                                                    progressComponent={<TableLoader />}
+                                                />
                                             </div>
                                         </div>
                                     </div>

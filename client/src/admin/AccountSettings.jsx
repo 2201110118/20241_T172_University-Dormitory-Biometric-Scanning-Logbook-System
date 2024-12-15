@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import AdminHeader from '../components/AdminHeader';
 
 function AccountSettings() {
+    const { user } = useAuth();
     const [passwords, setPasswords] = useState({
         currentPassword: '',
         newPassword: '',
@@ -25,6 +27,8 @@ function AccountSettings() {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [showCurrentPasswordUsername, setShowCurrentPasswordUsername] = useState(false);
+    const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+    const [isUsernameLoading, setIsUsernameLoading] = useState(false);
 
     const handlePasswordChange = (e) => {
         setPasswords({
@@ -65,28 +69,24 @@ function AccountSettings() {
     };
 
     const handleConfirmChange = async () => {
+        setIsPasswordLoading(true);
         try {
-            const adminId = localStorage.getItem('adminId');
-            console.log('AdminId:', adminId);
-
-            if (!adminId) {
+            if (!user?.id) {
                 throw new Error('Admin ID not found. Please log in again.');
             }
 
-            const response = await fetch(`http://localhost:5000/api/admin/change-password/${adminId}`, {
-                method: 'PUT',
+            const response = await fetch(`http://localhost:5000/api/admin/${user.id}`, {
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     currentPassword: pendingPasswords.currentPassword,
-                    newPassword: pendingPasswords.newPassword
+                    password: pendingPasswords.newPassword
                 })
             });
 
             const data = await response.json();
-            console.log('Response status:', response.status);
-            console.log('Response data:', data);
 
             if (!response.ok) {
                 setShowConfirmModal(false);
@@ -112,32 +112,30 @@ function AccountSettings() {
                 type: 'danger'
             });
             setShowConfirmModal(false);
+        } finally {
+            setIsPasswordLoading(false);
         }
     };
 
     const handleConfirmUsernameChange = async () => {
+        setIsUsernameLoading(true);
         try {
-            const adminId = localStorage.getItem('adminId');
-            console.log('AdminId:', adminId);
-
-            if (!adminId) {
+            if (!user?.id) {
                 throw new Error('Admin ID not found. Please log in again.');
             }
 
-            const response = await fetch(`http://localhost:5000/api/admin/change-username/${adminId}`, {
-                method: 'PUT',
+            const response = await fetch(`http://localhost:5000/api/admin/${user.id}`, {
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     currentPassword: pendingUsername.currentPassword,
-                    newUsername: pendingUsername.newUsername
+                    username: pendingUsername.newUsername
                 })
             });
 
             const data = await response.json();
-            console.log('Response status:', response.status);
-            console.log('Response data:', data);
 
             if (!response.ok) {
                 setShowUsernameConfirmModal(false);
@@ -159,14 +157,8 @@ function AccountSettings() {
             });
             setShowUsernameConfirmModal(false);
 
-            // Update the username in localStorage
-            const currentAdmin = JSON.parse(localStorage.getItem('admin'));
-            if (currentAdmin) {
-                currentAdmin.username = pendingUsername.newUsername;
-                localStorage.setItem('admin', JSON.stringify(currentAdmin));
-                // Dispatch custom event to update header
-                window.dispatchEvent(new Event('usernameChanged'));
-            }
+            // Update the username in auth context
+            window.dispatchEvent(new Event('authStateChange'));
         } catch (error) {
             console.error('Full error:', error);
             setUsernameMessage({
@@ -174,6 +166,8 @@ function AccountSettings() {
                 type: 'danger'
             });
             setShowUsernameConfirmModal(false);
+        } finally {
+            setIsUsernameLoading(false);
         }
     };
 
@@ -220,7 +214,13 @@ function AccountSettings() {
                                     </Link>
                                 </li>
                                 <li className="nav-item border-bottom border-white">
-                                    <Link to="#" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                    <Link to="/AdminMessage" className="nav-link my-1 mx-2 d-flex align-items-center">
+                                        <i className="bi bi-envelope-fill" style={{ fontSize: '1.5rem' }} />
+                                        <span className="ms-2 fw-bold fs-6">Message</span>
+                                    </Link>
+                                </li>
+                                <li className="nav-item border-bottom border-white">
+                                    <Link to="/AdminGenerateReport" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-clipboard-fill" style={{ fontSize: '1.5rem' }} />
                                         <span className="ms-2 fw-bold fs-6">Generate Report</span>
                                     </Link>
@@ -228,7 +228,7 @@ function AccountSettings() {
                                 <li className="nav-item border-bottom border-white">
                                     <Link to="/AdminSettings" className="nav-link my-1 mx-2 d-flex align-items-center">
                                         <i className="bi bi-gear-fill" style={{ fontSize: '1.5rem' }} />
-                                        <span className="ms-2 fw-bold fs-6">Setting</span>
+                                        <span className="ms-2 fw-bold fs-6">Settings</span>
                                     </Link>
                                 </li>
                             </ul>
@@ -472,13 +472,22 @@ function AccountSettings() {
                                 <div className="modal-footer">
                                     <button type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowConfirmModal(false)}>
+                                        onClick={() => setShowConfirmModal(false)}
+                                        disabled={isPasswordLoading}>
                                         Cancel
                                     </button>
                                     <button type="button"
-                                        className="btn btn-primary"
-                                        onClick={handleConfirmChange}>
-                                        Confirm Change
+                                        className="btn btn-primary d-flex align-items-center"
+                                        onClick={handleConfirmChange}
+                                        disabled={isPasswordLoading}>
+                                        {isPasswordLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Updating...
+                                            </>
+                                        ) : (
+                                            'Confirm Change'
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -516,13 +525,22 @@ function AccountSettings() {
                                 <div className="modal-footer">
                                     <button type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowUsernameConfirmModal(false)}>
+                                        onClick={() => setShowUsernameConfirmModal(false)}
+                                        disabled={isUsernameLoading}>
                                         Cancel
                                     </button>
                                     <button type="button"
-                                        className="btn btn-primary"
-                                        onClick={handleConfirmUsernameChange}>
-                                        Confirm Change
+                                        className="btn btn-primary d-flex align-items-center"
+                                        onClick={handleConfirmUsernameChange}
+                                        disabled={isUsernameLoading}>
+                                        {isUsernameLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Updating...
+                                            </>
+                                        ) : (
+                                            'Confirm Change'
+                                        )}
                                     </button>
                                 </div>
                             </div>
