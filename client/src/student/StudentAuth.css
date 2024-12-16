@@ -1,0 +1,232 @@
+/* Base styles */
+html,
+body {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    position: relative;
+}
+
+/* Login page container */
+.login-page {
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-x: hidden;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    margin: 0;
+    padding: 0;
+}
+
+.login-page.visible {
+    opacity: 1;
+}
+
+/* Login form container */
+.login-container {
+    width: 1000px;
+    min-height: 600px;
+    display: flex;
+    opacity: 0;
+    transform: scale(0.98);
+    transition: all 0.3s ease;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.login-container.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Left side - Image container */
+.login-container>div:first-child {
+    width: 500px;
+    min-height: 600px;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Right side - Form container */
+.login-container>div:last-child {
+    width: 500px;
+    min-height: 600px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+}
+
+/* Form elements */
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    transition: all 0.2s ease-in-out;
+}
+
+/* Button hover styles */
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Progress steps */
+.progress-step {
+    transition: all 0.3s ease;
+}
+
+/* Alert styles - No animations */
+.alert {
+    display: flex !important;
+    position: fixed !important;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: auto;
+    min-width: 200px;
+    max-width: 400px;
+    text-align: center;
+    padding: 8px 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.alert i {
+    margin-right: 8px;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+/* Error and success messages - No animations */
+.error-message,
+.success-message {
+    display: block;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.success-message {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+/* Loading spinner */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* Progress bar */
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Link hover */
+a {
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    color: #0056b3;
+    text-decoration: none;
+}
+
+/* Icon */
+.bi {
+    transition: all 0.2s ease;
+}
+
+.btn:hover .bi {
+    transform: translateY(-1px);
+}
+
+.recaptcha-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+    min-height: 78px; /* Height of reCAPTCHA widget */
+}
+
+.recaptcha-container iframe {
+    margin: 0 auto;
+}
+
+/* Ensure reCAPTCHA is centered and responsive */
+@media (max-width: 300px) {
+    .recaptcha-container {
+        transform: scale(0.9);
+        transform-origin: center;
+    }
+}
