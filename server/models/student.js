@@ -78,19 +78,51 @@ const studentSchema = new mongoose.Schema({
     version: {
         type: Number,
         default: 0
+    },
+    lastModified: {
+        field: String,
+        timestamp: Date,
+        modifiedBy: String
     }
 }, {
     toJSON: { getters: true },
     toObject: { getters: true }
 });
 
-// Add pre-save middleware to hash password
-studentSchema.pre('save', async function (next) {
-    // Only hash the password if it has been modified (or is new)
-    if (!this.isModified('password')) return next();
+// Enhance pre-save middleware for better version tracking
+studentSchema.pre('save', function(next) {
+    // Track all important field modifications
+    const modifiedFields = this.modifiedPaths();
+    const importantFields = [
+        'fullname', 
+        'contacts', 
+        'password',
+        'gmail',
+        'roomnumber',
+        'registeredaccount',
+        'accountStatus'
+    ];
 
+    if (modifiedFields.some(field => importantFields.includes(field))) {
+        this.version++;
+        this.lastModified = {
+            field: modifiedFields.join(', '),
+            timestamp: new Date(),
+            modifiedBy: this._modifiedBy || 'system'
+        };
+    }
+    next();
+});
+
+// Add method to check for conflicts
+studentSchema.methods.hasConflict = function(incomingVersion) {
+    return this.version !== incomingVersion;
+};
+
+// Keep existing password hashing middleware
+studentSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
     try {
-        // Generate salt and hash password
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
         next();
@@ -99,7 +131,7 @@ studentSchema.pre('save', async function (next) {
     }
 });
 
-// Add method to compare passwords
+// Keep existing methods
 studentSchema.methods.comparePassword = async function (candidatePassword) {
     try {
         return await bcrypt.compare(candidatePassword, this.password);
@@ -119,16 +151,6 @@ studentSchema.pre('findOneAndDelete', async function (next) {
     } catch (error) {
         next(error);
     }
-});
-
-// Add pre-save middleware to increment version
-studentSchema.pre('save', function(next) {
-    if (this.isModified('contacts') || 
-        this.isModified('fullname') || 
-        this.isModified('password')) {
-        this.version++;
-    }
-    next();
 });
 
 const studentModel = mongoose.model('Students', studentSchema);

@@ -15,7 +15,19 @@ const getStudents = async (req, res) => {
 
 const getStudent = async (req, res) => {
   try {
-    const student = await Students.findById(req.params.id); // Fixed model name
+    let student;
+    const id = req.params.id;
+
+    // Try to find by MongoDB ID first
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      student = await Students.findById(id);
+    }
+    
+    // If not found or not MongoDB ID, try finding by studentid
+    if (!student) {
+      student = await Students.findOne({ studentid: id });
+    }
+
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -68,20 +80,35 @@ const postStudent = async (req, res) => {
 const updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { version, currentPassword, password, ...updates } = req.body;
+    const { version, currentPassword, password, modifiedBy, ...updates } = req.body;
 
-    // Find student by studentid instead of _id
-    const student = await Students.findOne({ studentid: id }).select('+password');
+    // Preserve existing logic for finding student by _id or studentid
+    let student;
+    try {
+      // Check if id is a valid MongoDB ObjectId
+      if (id.match(/^[0-9a-fA-F]{24}$/)) {
+        student = await Students.findById(id).select('+password');
+      }
+    } catch (error) {
+      console.log('Not a valid MongoDB ID, trying studentid instead');
+    }
+
+    // If not found by _id, try finding by studentid
+    if (!student) {
+      student = await Students.findOne({ studentid: id }).select('+password');
+    }
     
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Version check for concurrency control (skip for password changes)
-    if (!password && version !== undefined && student.version !== version) {
+    // Version conflict check (skip for password changes)
+    if (!password && version !== undefined && student.hasConflict(version)) {
       return res.status(409).json({
         message: 'Data has been modified by another user. Please refresh and try again.',
-        currentVersion: student.version
+        currentVersion: student.version,
+        lastModified: student.lastModified,
+        serverData: student
       });
     }
 
@@ -97,14 +124,18 @@ const updateStudent = async (req, res) => {
       updates.password = await bcrypt.hash(password, salt);
     }
 
-    // Apply updates and increment version
+    // Set modifier information
+    student._modifiedBy = modifiedBy || 'unknown';
+
+    // Apply updates and save
     Object.assign(student, updates);
     await student.save();
 
     res.json({
       message: 'Student updated successfully',
       student: student,
-      newVersion: student.version
+      newVersion: student.version,
+      lastModified: student.lastModified
     });
 
   } catch (error) {

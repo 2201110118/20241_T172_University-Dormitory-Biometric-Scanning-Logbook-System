@@ -4,8 +4,11 @@ import DataTable from 'react-data-table-component';
 import TableLoader from '../components/TableLoader';
 import customTableStyles from '../components/TableStyles';
 import AdminHeader from '../components/AdminHeader';
+import { Modal } from 'bootstrap';
+import { useAuth } from '../context/AuthContext';
 
 function AdminAccountManagement() {
+    const { user } = useAuth();
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const initialTab = queryParams.get('tab') === 'unregistered' ? 'unregistered' : 'registered';
@@ -78,6 +81,26 @@ function AdminAccountManagement() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const [studentVersions, setStudentVersions] = useState({});
+
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
+
+    const [errorModal, setErrorModal] = useState(null);
+    const [successModal, setSuccessModal] = useState(null);
+
+    useEffect(() => {
+        // Initialize modals
+        const error = new Modal(document.getElementById('errorModal'));
+        const success = new Modal(document.getElementById('successModal'));
+        setErrorModal(error);
+        setSuccessModal(success);
+
+        return () => {
+            if (errorModal) errorModal.dispose();
+            if (successModal) successModal.dispose();
+        };
+    }, []);
 
     const fetchStudents = async () => {
         setIsLoading(true);
@@ -325,9 +348,10 @@ function AdminAccountManagement() {
             const data = await response.json();
 
             if (response.status === 409) {
-                // Handle concurrent modification
-                alert(data.message);
-                await fetchStudents(); // Refresh data
+                const errorModalBody = document.getElementById('errorModalBody');
+                errorModalBody.textContent = data.message;
+                errorModal.show();
+                await fetchStudents();
                 setShowEditModal(false);
                 setShowSaveConfirmModal(false);
                 return;
@@ -340,20 +364,15 @@ function AdminAccountManagement() {
             await fetchStudents();
             setShowEditModal(false);
             setShowSaveConfirmModal(false);
-
-            // Show success modal
-            const successModal = document.getElementById('successModal');
             const successModalBody = document.getElementById('successModalBody');
             successModalBody.textContent = 'Student information updated successfully!';
-            new bootstrap.Modal(successModal).show();
+            successModal.show();
 
         } catch (error) {
             console.error('Error updating student:', error);
-            // Show error modal
-            const errorModal = document.getElementById('errorModal');
             const errorModalBody = document.getElementById('errorModalBody');
             errorModalBody.textContent = error.message || 'An error occurred while updating the student.';
-            new bootstrap.Modal(errorModal).show();
+            errorModal.show();
         } finally {
             setIsProcessing(false);
         }
@@ -419,21 +438,15 @@ function AdminAccountManagement() {
             await fetchStudents();
             setShowEditModal(false);
             setShowConfirmRegistrationModal(false);
-
-            // Show success modal
-            const successModal = document.getElementById('successModal');
             const successModalBody = document.getElementById('successModalBody');
             successModalBody.textContent = 'Student registration has been confirmed successfully!';
-            new bootstrap.Modal(successModal).show();
+            successModal.show();
 
         } catch (error) {
             console.error('Error confirming student:', error);
-
-            // Show error modal
-            const errorModal = document.getElementById('errorModal');
             const errorModalBody = document.getElementById('errorModalBody');
             errorModalBody.textContent = error.message || 'An error occurred while confirming student registration.';
-            new bootstrap.Modal(errorModal).show();
+            errorModal.show();
         } finally {
             setIsProcessing(false);
         }

@@ -52,19 +52,21 @@ function StudentAccountSettings() {
     const [isContactLoading, setIsContactLoading] = useState(false);
     const [studentInfo, setStudentInfo] = useState(null);
     const [version, setVersion] = useState(0);
+    const [conflictData, setConflictData] = useState(null);
+    const [showConflictModal, setShowConflictModal] = useState(false);
+
+    const fetchStudentInfo = async () => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`);
+            const data = await response.json();
+            setStudentInfo(data);
+            setVersion(data.version);
+        } catch (error) {
+            console.error('Error fetching student info:', error);
+        }
+    };
 
     useEffect(() => {
-        const fetchStudentInfo = async () => {
-            try {
-                const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`);
-                const data = await response.json();
-                setStudentInfo(data);
-                setVersion(data.version);
-            } catch (error) {
-                console.error('Error fetching student info:', error);
-            }
-        };
-        
         if (user?.studentid) {
             fetchStudentInfo();
         }
@@ -121,12 +123,32 @@ function StudentAccountSettings() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    version: version,
                     currentPassword: pendingPasswords.currentPassword,
-                    password: pendingPasswords.newPassword
+                    password: pendingPasswords.newPassword,
+                    modifiedBy: user.studentid
                 })
             });
 
             const data = await response.json();
+
+            if (response.status === 409) {
+                // Close confirmation modal
+                setShowConfirmModal(false);
+
+                // Store conflict data
+                setConflictData({
+                    lastModified: data.lastModified,
+                    serverData: data.serverData
+                });
+
+                // Show conflict modal
+                setShowConflictModal(true);
+
+                // Refresh the page data
+                await fetchStudentInfo();
+                return;
+            }
 
             if (!response.ok) {
                 setShowConfirmModal(false);
@@ -145,6 +167,7 @@ function StudentAccountSettings() {
                 confirmPassword: ''
             });
             setShowConfirmModal(false);
+            setVersion(data.newVersion);
         } catch (error) {
             console.error('Full error:', error);
             setMessage({
@@ -295,23 +318,28 @@ function StudentAccountSettings() {
                                 Number(pendingContacts.friend.contactNumber) : undefined,
                             gmail: pendingContacts.friend.gmail
                         }
-                    }
+                    },
+                    modifiedBy: user.studentid
                 })
             });
 
             const data = await response.json();
 
             if (response.status === 409) {
-                // Handle concurrent modification
-                setContactMessage({ 
-                    text: data.message, 
-                    type: 'warning' 
+                // Close confirmation modal
+                setShowContactConfirmModal(false);
+
+                // Store conflict data
+                setConflictData({
+                    lastModified: data.lastModified,
+                    serverData: data.serverData
                 });
-                // Refresh student data to get latest version
-                const refreshResponse = await fetch(`http://localhost:5000/api/student/${user.studentid}`);
-                const refreshData = await refreshResponse.json();
-                setStudentInfo(refreshData);
-                setVersion(refreshData.version);
+
+                // Show conflict modal
+                setShowConflictModal(true);
+
+                // Refresh the page data
+                await fetchStudentInfo();
                 return;
             }
 
@@ -335,9 +363,109 @@ function StudentAccountSettings() {
                 text: `Error updating contact information: ${error.message}`,
                 type: 'danger'
             });
+            setShowContactConfirmModal(false);
         } finally {
             setIsContactLoading(false);
         }
+    };
+
+    const handleUpdate = async (updateData) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...updateData,
+                    version: version,
+                    modifiedBy: user.studentid
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.status === 409) {
+                // Close any open confirmation modals
+                setShowConfirmModal(false);
+                setShowUsernameConfirmModal(false);
+                setShowContactConfirmModal(false);
+
+                // Store conflict data
+                setConflictData({
+                    lastModified: data.lastModified,
+                    serverData: data.serverData
+                });
+
+                // Show conflict modal
+                setShowConflictModal(true);
+
+                // Refresh the page data
+                await fetchStudentInfo();
+                return false;
+            }
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Update failed');
+            }
+
+            // Update local version
+            setVersion(data.newVersion);
+            return true;
+        } catch (error) {
+            console.error('Update error:', error);
+            return false;
+        }
+    };
+
+    const ConflictModal = () => {
+        if (!showConflictModal || !conflictData) return null;
+
+        const { lastModified, serverData } = conflictData;
+        const formattedTime = new Date(lastModified.timestamp).toLocaleString();
+
+        return (
+            <>
+                <div className="modal fade show" style={{ display: 'block' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Data Conflict Detected</h5>
+                                <button 
+                                    type="button" 
+                                    className="btn-close" 
+                                    onClick={() => setShowConflictModal(false)}
+                                />
+                            </div>
+                            <div className="modal-body">
+                                <div className="alert alert-warning">
+                                    <i className="bi bi-exclamation-triangle me-2"></i>
+                                    The data was modified by another user.
+                                </div>
+                                <div className="mt-3">
+                                    <p><strong>Modified Fields:</strong> {lastModified.field}</p>
+                                    <p><strong>Modified By:</strong> {lastModified.modifiedBy}</p>
+                                    <p><strong>Modified At:</strong> {formattedTime}</p>
+                                </div>
+                                <div className="mt-3">
+                                    <p>The page has been refreshed with the latest data. Please review and try your changes again if needed.</p>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button 
+                                    type="button" 
+                                    className="btn btn-primary"
+                                    onClick={() => setShowConflictModal(false)}
+                                >
+                                    Understood
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="modal-backdrop fade show"></div>
+            </>
+        );
     };
 
     return (
@@ -1008,6 +1136,9 @@ function StudentAccountSettings() {
                     <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
                 </>
             )}
+
+            {/* Add ConflictModal */}
+            <ConflictModal />
         </>
     );
 }
