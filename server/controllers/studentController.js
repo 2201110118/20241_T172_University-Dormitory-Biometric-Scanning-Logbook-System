@@ -67,78 +67,49 @@ const postStudent = async (req, res) => {
 
 const updateStudent = async (req, res) => {
   try {
-    const studentid = req.params.id;
-    const { currentPassword, password, ...updates } = req.body;
+    const { id } = req.params;
+    const { version, currentPassword, password, ...updates } = req.body;
 
-    if (!studentid) {
-      return res.status(400).json({ message: "Student ID is required" });
+    // Find student by studentid instead of _id
+    const student = await Students.findOne({ studentid: id }).select('+password');
+    
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
     }
 
-    console.log('Updating student with studentid:', studentid);
-    console.log('Update data:', { ...updates, hasPassword: !!password });
+    // Version check for concurrency control (skip for password changes)
+    if (!password && version !== undefined && student.version !== version) {
+      return res.status(409).json({
+        message: 'Data has been modified by another user. Please refresh and try again.',
+        currentVersion: student.version
+      });
+    }
 
-    // If password update is requested, verify current password
+    // Handle password change separately
     if (password) {
-      const student = await Students.findOne({ studentid }).select('+password');
-      if (!student) {
-        return res.status(404).json({ message: "Student not found" });
-      }
-
       // Verify current password
       const isMatch = await student.comparePassword(currentPassword);
       if (!isMatch) {
-        return res.status(401).json({ message: "Current password is incorrect" });
+        return res.status(401).json({ message: 'Current password is incorrect' });
       }
-
       // Hash the new password
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-      updates.password = hashedPassword;
+      updates.password = await bcrypt.hash(password, salt);
     }
 
-    const cleanData = (obj) => {
-      const cleaned = {};
-      for (const [key, value] of Object.entries(obj)) {
-        if (value && typeof value === 'object') {
-          const cleanedNested = cleanData(value);
-          if (Object.keys(cleanedNested).length > 0) {
-            cleaned[key] = cleanedNested;
-          }
-        } else if (value !== "" && value !== undefined && value !== null) {
-          cleaned[key] = value;
-        }
-      }
-      return cleaned;
-    };
+    // Apply updates and increment version
+    Object.assign(student, updates);
+    await student.save();
 
-    const cleanedUpdates = cleanData(updates);
+    res.json({
+      message: 'Student updated successfully',
+      student: student,
+      newVersion: student.version
+    });
 
-    if (Object.keys(cleanedUpdates).length === 0 && !password) {
-      return res.status(400).json({ message: "No valid fields to update." });
-    }
-
-    const updatedStudent = await Students.findOneAndUpdate(
-      { studentid: studentid },
-      { $set: cleanedUpdates },
-      {
-        new: true,
-        runValidators: true,
-        context: 'query'
-      }
-    );
-
-    if (!updatedStudent) {
-      return res.status(404).json({ message: "Student not found" });
-    }
-
-    res.status(200).json(updatedStudent);
   } catch (error) {
     console.error('Error updating student:', error);
-    res.status(500).json({
-      message: 'Server error',
-      error: error.message,
-      details: error.stack
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 

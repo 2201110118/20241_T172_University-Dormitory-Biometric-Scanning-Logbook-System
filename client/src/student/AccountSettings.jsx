@@ -51,24 +51,24 @@ function StudentAccountSettings() {
     const [pendingContacts, setPendingContacts] = useState(null);
     const [isContactLoading, setIsContactLoading] = useState(false);
     const [studentInfo, setStudentInfo] = useState(null);
+    const [version, setVersion] = useState(0);
 
     useEffect(() => {
         const fetchStudentInfo = async () => {
             try {
-                if (!user?.studentid) return;
-                
-                const response = await fetch(`http://localhost:5000/api/student/studentid/${user.studentid}`);
+                const response = await fetch(`http://localhost:5000/api/student/${user.studentid}`);
                 const data = await response.json();
-                if (response.ok) {
-                    setStudentInfo(data);
-                }
+                setStudentInfo(data);
+                setVersion(data.version);
             } catch (error) {
                 console.error('Error fetching student info:', error);
             }
         };
-
-        fetchStudentInfo();
-    }, [user?.studentid]);
+        
+        if (user?.studentid) {
+            fetchStudentInfo();
+        }
+    }, [user]);
 
     const handlePasswordChange = (e) => {
         setPasswords({
@@ -170,6 +170,7 @@ function StudentAccountSettings() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    version: version,
                     fullname: {
                         firstname: pendingName.newFirstName,
                         lastname: pendingName.newLastName
@@ -178,6 +179,21 @@ function StudentAccountSettings() {
             });
 
             const data = await response.json();
+
+            if (response.status === 409) {
+                // Handle concurrent modification
+                setNameMessage({ 
+                    text: data.message, 
+                    type: 'warning' 
+                });
+                // Refresh student data to get latest version
+                const refreshResponse = await fetch(`http://localhost:5000/api/student/${user.studentid}`);
+                const refreshData = await refreshResponse.json();
+                setStudentInfo(refreshData);
+                setVersion(refreshData.version);
+                setShowNameConfirmModal(false);
+                return;
+            }
 
             if (!response.ok) {
                 setShowNameConfirmModal(false);
@@ -200,6 +216,7 @@ function StudentAccountSettings() {
                 confirmLastName: ''
             });
             setShowNameConfirmModal(false);
+            setVersion(data.newVersion);
 
             // Update the name in session storage
             const currentStudent = JSON.parse(sessionStorage.getItem('student'));
@@ -261,6 +278,7 @@ function StudentAccountSettings() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    version: version,
                     contacts: {
                         family: {
                             contactNumber: pendingContacts.family.contactNumber ? 
@@ -283,16 +301,22 @@ function StudentAccountSettings() {
 
             const data = await response.json();
 
-            if (!response.ok) {
-                setShowContactConfirmModal(false);
-                if (response.status === 401) {
-                    setContactMessage({ text: 'Current password is incorrect', type: 'danger' });
-                } else if (response.status === 400) {
-                    setContactMessage({ text: data.message, type: 'danger' });
-                } else {
-                    throw new Error(data.message || 'Error updating contact information');
-                }
+            if (response.status === 409) {
+                // Handle concurrent modification
+                setContactMessage({ 
+                    text: data.message, 
+                    type: 'warning' 
+                });
+                // Refresh student data to get latest version
+                const refreshResponse = await fetch(`http://localhost:5000/api/student/${user.studentid}`);
+                const refreshData = await refreshResponse.json();
+                setStudentInfo(refreshData);
+                setVersion(refreshData.version);
                 return;
+            }
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Error updating contact information');
             }
 
             setContactMessage({ text: 'Contact information updated successfully!', type: 'success' });
@@ -303,13 +327,14 @@ function StudentAccountSettings() {
                 friend: { contactNumber: '', gmail: '' }
             });
             setShowContactConfirmModal(false);
+            setVersion(data.newVersion);
+
         } catch (error) {
             console.error('Full error:', error);
             setContactMessage({
                 text: `Error updating contact information: ${error.message}`,
                 type: 'danger'
             });
-            setShowContactConfirmModal(false);
         } finally {
             setIsContactLoading(false);
         }

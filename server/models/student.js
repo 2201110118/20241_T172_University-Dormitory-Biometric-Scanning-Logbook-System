@@ -74,6 +74,10 @@ const studentSchema = new mongoose.Schema({
         type: String,
         sparse: true,
         unique: true
+    },
+    version: {
+        type: Number,
+        default: 0
     }
 }, {
     toJSON: { getters: true },
@@ -115,6 +119,16 @@ studentSchema.pre('findOneAndDelete', async function (next) {
     } catch (error) {
         next(error);
     }
+});
+
+// Add pre-save middleware to increment version
+studentSchema.pre('save', function(next) {
+    if (this.isModified('contacts') || 
+        this.isModified('fullname') || 
+        this.isModified('password')) {
+        this.version++;
+    }
+    next();
 });
 
 const studentModel = mongoose.model('Students', studentSchema);

@@ -77,6 +77,8 @@ function AdminAccountManagement() {
     const [isLoading, setIsLoading] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
 
+    const [studentVersions, setStudentVersions] = useState({});
+
     const fetchStudents = async () => {
         setIsLoading(true);
         try {
@@ -92,6 +94,13 @@ function AdminAccountManagement() {
             setStudents(data);
             setRegisteredStudents(data.filter(student => student.registeredaccount));
             setUnregisteredStudents(data.filter(student => !student.registeredaccount));
+
+            // Store versions in state
+            const versions = {};
+            data.forEach(student => {
+                versions[student._id] = student.version;
+            });
+            setStudentVersions(versions);
         } catch (error) {
             console.error('Error fetching students:', error);
         } finally {
@@ -273,14 +282,12 @@ function AdminAccountManagement() {
     };
 
     const handleSaveConfirm = async () => {
-        if (!editingStudent) {
-            console.error('No student selected');
-            return;
-        }
+        if (!editingStudent) return;
 
         try {
             setIsProcessing(true);
             const updatedData = {
+                version: studentVersions[editingStudent._id],
                 studentid: Number(pendingChanges.studentid),
                 fullname: {
                     firstname: pendingChanges.firstname,
@@ -307,19 +314,27 @@ function AdminAccountManagement() {
                 }
             };
 
-            const cleanedData = JSON.parse(JSON.stringify(updatedData));
-
-            const response = await fetch(`http://localhost:5000/api/student/${editingStudent.studentid}`, {
+            const response = await fetch(`http://localhost:5000/api/student/${editingStudent._id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(cleanedData)
+                body: JSON.stringify(updatedData)
             });
 
+            const data = await response.json();
+
+            if (response.status === 409) {
+                // Handle concurrent modification
+                alert(data.message);
+                await fetchStudents(); // Refresh data
+                setShowEditModal(false);
+                setShowSaveConfirmModal(false);
+                return;
+            }
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to update student');
+                throw new Error(data.message || 'Failed to update student');
             }
 
             await fetchStudents();
@@ -329,16 +344,15 @@ function AdminAccountManagement() {
             // Show success modal
             const successModal = document.getElementById('successModal');
             const successModalBody = document.getElementById('successModalBody');
-            successModalBody.textContent = 'Student information has been updated successfully!';
+            successModalBody.textContent = 'Student information updated successfully!';
             new bootstrap.Modal(successModal).show();
 
         } catch (error) {
             console.error('Error updating student:', error);
-
             // Show error modal
             const errorModal = document.getElementById('errorModal');
             const errorModalBody = document.getElementById('errorModalBody');
-            errorModalBody.textContent = error.message || 'An error occurred while updating student information.';
+            errorModalBody.textContent = error.message || 'An error occurred while updating the student.';
             new bootstrap.Modal(errorModal).show();
         } finally {
             setIsProcessing(false);
